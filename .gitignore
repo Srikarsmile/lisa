@@ -3,4 +3,14 @@ npm-debug.log*
 dist
 .DS_Store
 
+# Local environment / secrets
+.env
+.env.local
+.env.*
+
+# Local downloads / scratch data
+vector-store-downloads
+openai-files-downloads
+
+
 

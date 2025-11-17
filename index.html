@@ -63,20 +63,15 @@
       flex:1;
     }
 
-    /* Two-column layout */
     .layout {
       display:flex;
       flex-wrap:wrap;
       gap:20px;
-      align-items:stretch;
+      justify-content:center;
     }
     .col-left {
-      flex:1 1 60%;
+      flex:1 1 100%;
       min-width:280px;
-    }
-    .col-right {
-      flex:1 1 40%;
-      min-width:260px;
     }
 
     /* Card */
@@ -127,15 +122,20 @@
       border:1px solid rgba(0,0,0,.04);
     }
 
-    /* Agent container + loader */
-    #did-container { width:100%; height:min(78vh,860px); background:#f1eee9; position:relative; }
-    .loader {
-      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-      color:#555; font-size:15px;
-      background:linear-gradient(90deg,#f4f1ec 0%,#f1eee9 50%,#f4f1ec 100%);
-      animation:pulse 1.6s infinite ease-in-out;
+    /* Avatar container */
+    #did-container {
+      width:100%;
+      height:min(78vh,860px);
+      background:#f1eee9;
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#555;
+      font-size:15px;
+      text-align:center;
+      padding:16px;
     }
-    @keyframes pulse { 0%{opacity:.9} 50%{opacity:.6} 100%{opacity:.9} }
 
     /* Consent strip */
     .consent { margin:14px auto 0; text-align:center; color:var(--muted); font-size:13px; }
@@ -204,14 +204,8 @@
       .layout {
         flex-direction:column;
       }
-      .card {
-        border-radius:0;
-        box-shadow:none;
-        border:none;
-      }
-      #did-container {
-        height:calc(100vh - 160px); /* give most of the screen to the assistant on mobile */
-      }
+      .card { border-radius:0; box-shadow:none; border:none; }
+      #did-container { height:calc(100vh - 160px); }
       .consent {
         font-size:12px;
         margin-top:10px;
@@ -252,7 +246,7 @@
       src="https://agent.d-id.com/v2/index.js"
       data-mode="full"
       data-client-key="Z29vZ2xlLW9hdXRoMnwxMTY2NzQwOTgzMTY0MjIxMDQ5NDg6MUN6M0hJQm5XU1J5eXFvTzNkdXUx"
-      data-agent-id="v2_agt_Uzcso38i"
+      data-agent-id="v2_agt_DGJPr6Ua"
       data-name="did-agent"
       data-monitor="true"
       data-target-id="did-container">
@@ -349,16 +343,6 @@
     document.getElementById('pp-date').textContent = today;
     document.getElementById('tos-date').textContent = today;
 
-    // Remove loader when DID iframe appears
-    const observer = new MutationObserver(() => {
-      const iframe = document.querySelector('#did-container iframe');
-      if (iframe) {
-        document.getElementById('loader')?.remove();
-        observer.disconnect();
-      }
-    });
-    observer.observe(document.getElementById('did-container'), { childList: true, subtree: true });
-
     // Modal logic (open/close, ESC, overlay click)
     const openModal = id => document.getElementById(id).setAttribute('open','');
     const closeModal = el => el.removeAttribute('open');
@@ -386,6 +370,17 @@
         document.querySelectorAll('.modal[open]').forEach(m => closeModal(m));
       }
     });
+
+    // Simple chat client that talks to our backend (/api/chat)
+    // Remove loader when DID iframe appears
+    const observer = new MutationObserver(() => {
+      const iframe = document.querySelector('#did-container iframe');
+      if (iframe) {
+        document.getElementById('loader')?.remove();
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.getElementById('did-container'), { childList: true, subtree: true });
   </script>
 </body>
 </html>
