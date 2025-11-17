@@ -1,0 +1,3 @@
+# stop any inherited rewrites
+RewriteEngine Off
+DirectoryIndex home.html
