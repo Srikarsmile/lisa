@@ -739,16 +739,6 @@
       if (!recognition) return;
       // Don't start if already recording
       if (isRecording) return;
-      // Stop agent from speaking when user starts talking (only if D-ID is actually speaking)
-      if (isAgentSpeaking && agentManager && isConnected) {
-        try {
-          if (typeof agentManager.interrupt === 'function') {
-            agentManager.interrupt();
-          }
-        } catch (e) {
-          // Ignore interrupt errors - not critical
-        }
-      }
       recognition.continuous = true;
       recognition.interimResults = true;
       isRecording = true;
