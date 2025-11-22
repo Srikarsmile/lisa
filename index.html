@@ -757,11 +757,6 @@
       recognition.lang = 'en-US';
 
       recognition.onresult = (event) => {
-        if (isAgentSpeaking || micSuppressedForAgent) {
-          setMicStatus('Lisa Buddy is speaking. Mic paused.', 'warn');
-          return;
-        }
-        // Ignore empty/noise results
         let finalTranscript = '';
         let interimTranscript = '';
 
@@ -780,13 +775,10 @@
         }
 
         // Submit when we have a final result
-        const cleanedFinal = finalTranscript.trim();
-        if (cleanedFinal) {
-          chatInput.value = cleanedFinal;
+        if (finalTranscript.trim()) {
+          chatInput.value = finalTranscript;
           chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
           setMicStatus('Heard you. Thinking…', 'ok');
-        } else if (!interimTranscript.trim()) {
-          setMicStatus('No speech detected. Try again closer to the mic.', 'warn');
         }
       };
 
@@ -813,10 +805,8 @@
       recognition.onend = () => {
         isRecording = false;
         setMicUiRecording(false);
-        if (autoListenEnabled && !isSpeaking && !micAccessDenied && !micSuppressedForAgent) {
+        if (autoListenEnabled && !isSpeaking && !micAccessDenied) {
           startRecording();
-        } else if (micAccessDenied) {
-          setMicStatus('Microphone blocked. Enable permissions to talk.', 'error');
         }
       };
     } else {
@@ -838,9 +828,6 @@
       const allowed = await ensureMicAccess('start-recording');
       if (!allowed || micAccessDenied) {
         setMicUiRecording(false);
-        if (micAccessDenied) {
-          setMicStatus('Microphone blocked. Enable permissions to talk.', 'error');
-        }
         return;
       }
       recognition.continuous = true;
@@ -1304,8 +1291,7 @@
         onVideoStateChange(state) {
           if (state === 'START') {
             isAgentSpeaking = true;
-            micSuppressedForAgent = true;
-            stopRecording('agent-speaking');
+        micSuppressedForAgent = true;
             setStatus('Streaming', true);
             setMicStatus('Lisa Buddy is speaking. Mic paused to avoid echo.', 'warn');
           } else if (state === 'END') {
