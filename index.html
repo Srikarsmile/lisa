@@ -761,6 +761,7 @@
           setMicStatus('Lisa Buddy is speaking. Mic paused.', 'warn');
           return;
         }
+        // Ignore empty/noise results
         let finalTranscript = '';
         let interimTranscript = '';
 
@@ -779,10 +780,13 @@
         }
 
         // Submit when we have a final result
-        if (finalTranscript.trim()) {
-          chatInput.value = finalTranscript;
+        const cleanedFinal = finalTranscript.trim();
+        if (cleanedFinal) {
+          chatInput.value = cleanedFinal;
           chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
           setMicStatus('Heard you. Thinking…', 'ok');
+        } else if (!interimTranscript.trim()) {
+          setMicStatus('No speech detected. Try again closer to the mic.', 'warn');
         }
       };
 
@@ -811,6 +815,8 @@
         setMicUiRecording(false);
         if (autoListenEnabled && !isSpeaking && !micAccessDenied && !micSuppressedForAgent) {
           startRecording();
+        } else if (micAccessDenied) {
+          setMicStatus('Microphone blocked. Enable permissions to talk.', 'error');
         }
       };
     } else {
@@ -832,6 +838,9 @@
       const allowed = await ensureMicAccess('start-recording');
       if (!allowed || micAccessDenied) {
         setMicUiRecording(false);
+        if (micAccessDenied) {
+          setMicStatus('Microphone blocked. Enable permissions to talk.', 'error');
+        }
         return;
       }
       recognition.continuous = true;
