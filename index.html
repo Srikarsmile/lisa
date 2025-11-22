@@ -646,6 +646,10 @@
     let hasGreeted = false;
     let audioUnlocked = false;
     let wantsAudioUnlock = false;
+    let audioUnlocking = false;
+    let audioElement = null;
+    let audioStream = null;
+    let hasAudioTrack = false;
     let streamReady = false;
     let playPromise = null;
     let greetTimeout = null;
@@ -952,6 +956,9 @@
     function cleanupPrevStream(newStream) {
       const prev = streamVideo.srcObject;
       const isSameStream = prev && prev === newStream;
+      if (!isSameStream) {
+        cleanupPrevAudio();
+      }
       if (prev && prev !== newStream && typeof prev.getTracks === 'function') {
         try { prev.getTracks().forEach(t => t.stop()); } catch (e) { /* noop */ }
       }
@@ -976,51 +983,73 @@
       }, duration);
     }
 
-    function removeAudioPrimer() {
-      ['click'].forEach(evt => {
-        window.removeEventListener(evt, audioPrimer);
-      });
+    function cleanupPrevAudio() {
+      if (audioElement) {
+        try { audioElement.pause(); } catch (_) {}
+        audioElement.srcObject = null;
+      }
+      if (audioStream?.getTracks) {
+        try { audioStream.getTracks().forEach(t => t.stop()); } catch (_) {}
+      }
+      audioStream = null;
+      hasAudioTrack = false;
     }
 
-    async function ensureVideoWithSound(reason = 'manual') {
-      // If already unlocked, nothing to do
-      if (audioUnlocked) return true;
-      wantsAudioUnlock = true;
+    function buildAudioSink(stream) {
+      cleanupPrevAudio();
+      const tracks = (stream?.getAudioTracks?.() || []);
+      hasAudioTrack = tracks.length > 0;
+      if (!hasAudioTrack) {
+        audioUnlocked = false;
+        return null;
+      }
+      audioStream = new MediaStream(tracks);
+      if (!audioElement) {
+        audioElement = new Audio();
+        audioElement.playsInline = true;
+        audioElement.autoplay = true;
+        audioElement.style.display = 'none';
+        document.body.appendChild(audioElement);
+      }
+      audioElement.srcObject = audioStream;
+      audioElement.muted = !audioUnlocked;
+      audioElement.volume = 1;
+      return audioElement;
+    }
 
-      try {
-        streamVideo.muted = false;
-        streamVideo.volume = 1;
-        if (streamVideo.paused) {
-          await streamVideo.play();
-        }
-        audioUnlocked = true;
-        wantsAudioUnlock = false;
-        removeAudioPrimer();
-        return true;
-      } catch (err) {
-        // AbortError or NotAllowedError are expected if no user gesture yet
-        console.warn(`Autoplay with sound blocked (${reason}), will retry on user gesture.`, err);
-        streamVideo.muted = true;
-        showUnmutePrompt();
+    async function unlockAudio(reason = 'manual') {
+      if (audioUnlocked) return true;
+      if (!hasAudioTrack) {
+        showErrorOverlay('Lisa connected but no audio track is available.');
         return false;
       }
-    }
-
-    // Fallback: if browser blocks autoplay with sound, unlock it on first user action
-    function audioPrimer(event) {
-      // Only respond to trusted user events (real clicks, not programmatic)
-      if (!audioUnlocked && event.isTrusted) {
+      if (!audioElement) {
+        showUnmutePrompt();
         wantsAudioUnlock = true;
-        playPromise = null; // allow a fresh play attempt
-        ensureVideoWithSound('user-gesture').then(() => {
-          // Try to greet now that audio is unlocked
-          greetUser();
-        });
+        return false;
+      }
+      wantsAudioUnlock = true;
+      audioUnlocking = true;
+      audioElement.muted = false;
+      streamVideo.muted = false;
+      streamVideo.defaultMuted = false;
+      try {
+        await audioElement.play();
+        try { await streamVideo.play(); } catch (_) {}
+        audioUnlocked = true;
+        wantsAudioUnlock = false;
+        hideOverlay();
+        greetUser();
+        return true;
+      } catch (err) {
+        console.warn(`Audio unlock blocked (${reason}):`, err);
+        audioUnlocked = false;
+        showUnmutePrompt();
+        return false;
+      } finally {
+        audioUnlocking = false;
       }
     }
-    ['click'].forEach(evt => {
-      window.addEventListener(evt, audioPrimer, { passive: true });
-    });
 
     async function speakSafe(text) {
       if (!agentManager || !isConnected) return false;
@@ -1035,9 +1064,7 @@
     }
 
     function greetUser() {
-      if (hasGreeted || !agentManager || !isConnected || !streamReady) return;
-      // Wait for audio to be unlocked before greeting so user can hear it
-      if (!audioUnlocked) return;
+      if (hasGreeted || !agentManager || !isConnected || !streamReady || !audioUnlocked) return;
       hasGreeted = true;
       clearTimeout(greetTimeout);
       greetTimeout = setTimeout(async () => {
@@ -1080,30 +1107,30 @@
           }
           cleanupPrevStream(value);
           streamVideo.srcObject = value;
-          // Start muted to satisfy autoplay policies; unmute after user interacts.
-          streamVideo.muted = true;
+          // Start muted to satisfy autoplay policies; unmute via unlockAudio once allowed
+          streamVideo.muted = !audioUnlocked;
+          streamVideo.defaultMuted = !audioUnlocked;
           playPromise = streamVideo.play();
           playPromise.then(() => {
             streamReady = true;
-            if (audioUnlocked) {
-              hideOverlay();
-            } else {
-              showUnmutePrompt();
-            }
-            if (wantsAudioUnlock && !audioUnlocked) {
-              ensureVideoWithSound('stream-ready');
-            }
           }).catch((err) => {
-            console.warn('Initial muted play failed (likely autoplay policy):', err);
+            console.warn('Initial video play failed (likely autoplay policy):', err);
             playPromise = null;
             streamReady = true;
+          }).finally(() => {
+            const audioEl = buildAudioSink(value);
+            if (!hasAudioTrack) {
+              setStatus('Connected (no audio)', true);
+              showErrorOverlay('Lisa connected but no audio track was received.');
+              return;
+            }
             if (audioUnlocked) {
               hideOverlay();
             } else {
               showUnmutePrompt();
-            }
-            if (wantsAudioUnlock && !audioUnlocked) {
-              ensureVideoWithSound('stream-ready');
+              if (wantsAudioUnlock) {
+                unlockAudio('stream-ready');
+              }
             }
           });
         },
@@ -1219,17 +1246,16 @@
     startAvatarBtn?.addEventListener('click', async () => {
       wantsAudioUnlock = true;
       if (isConnected && streamReady) {
-        const unlocked = await ensureVideoWithSound('start-button');
-        if (unlocked) {
-          hideOverlay();
-          greetUser();
-        } else {
-          showUnmutePrompt();
-        }
+        await unlockAudio('start-button');
         return;
       }
       showOverlay('Connecting Lisa...');
       await connectAgent();
+      if (audioElement) {
+        await unlockAudio('start-button');
+      } else {
+        showUnmutePrompt();
+      }
       if (autoListenEnabled && !isRecording && recognition) {
         startRecording();
       }
@@ -1237,26 +1263,16 @@
 
     streamVideo.addEventListener('playing', () => {
       streamReady = true;
-      hideOverlay();
+      if (audioUnlocked) hideOverlay();
       if (wantsAudioUnlock && !audioUnlocked) {
-        ensureVideoWithSound('video-playing').then(() => {
-          greetUser();
-        });
-      } else {
-        greetUser();
+        unlockAudio('video-playing');
       }
+      greetUser();
     });
 
     streamVideo.addEventListener('click', () => {
       wantsAudioUnlock = true;
-      ensureVideoWithSound('video-click').then((unlocked) => {
-        if (unlocked) {
-          hideOverlay();
-          greetUser();
-        } else {
-          showUnmutePrompt();
-        }
-      });
+      unlockAudio('video-click');
     });
 
     // Preload SDK and auto-connect to greet user
