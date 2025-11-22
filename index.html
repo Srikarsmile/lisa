@@ -680,12 +680,10 @@
     let micResumeTimeout = null;
     let micSuppressedForAgent = false;
 
-    const agentId = "v2_agt_DGJPr6Ua";
-    const clientKey = "Z29vZ2xlLW9hdXRoMnwxMTY2NzQwOTgzMTY0MjIxMDQ5NDg6MUN6M0hJQm5XU1J5eXFvTzNkdXUx";
-
     let agentManager = null;
     let sdkModule = null;
     let streamType = null;
+    let agentConfig = null;
     let speakChain = Promise.resolve();
     let isConnecting = false;
     let isConnected = false;
@@ -1182,6 +1180,28 @@
       statusDot.classList.toggle('online', online);
     }
 
+    async function loadAgentConfig() {
+      if (agentConfig) return agentConfig;
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) throw new Error('Failed to load agent config');
+        const cfg = await res.json();
+        agentConfig = {
+          agentId: cfg.agentId || null,
+          clientKey: cfg.clientKey || null,
+        };
+        if (!agentConfig.agentId || !agentConfig.clientKey) {
+          showErrorOverlay('Missing D-ID Agent credentials. Please set DID_AGENT_ID and DID_CLIENT_KEY on the server.');
+          throw new Error('Missing agent credentials');
+        }
+        return agentConfig;
+      } catch (err) {
+        console.error('Config error:', err);
+        showErrorOverlay('Unable to load configuration. Please try again or contact support.');
+        throw err;
+      }
+    }
+
     async function loadSdk() {
       if (!sdkModule) {
         sdkModule = await import('https://cdn.jsdelivr.net/npm/@d-id/client-sdk@1.1.11/+esm');
@@ -1334,6 +1354,7 @@
       setStatus('Connecting…', false);
       showOverlay('Connecting Lisa Buddy...');
       try {
+        const { agentId, clientKey } = await loadAgentConfig();
         const sdk = await loadSdk();
         if (!agentManager) {
           agentManager = await sdk.createAgentManager(agentId, {

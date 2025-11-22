@@ -17,6 +17,8 @@ const openai = new OpenAI({
 });
 
 const ASSISTANT_ID = process.env.OPENAI_ASSISTANT_ID;
+const DID_AGENT_ID = process.env.DID_AGENT_ID || process.env.DID_TALKING_HEAD_ID || "";
+const DID_CLIENT_KEY = process.env.DID_CLIENT_KEY || process.env.DID_API_KEY || "";
 const useAssistant = Boolean(ASSISTANT_ID);
 
 async function askWithAssistant(message) {
@@ -124,6 +126,13 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+app.get("/api/config", (req, res) => {
+  res.json({
+    agentId: DID_AGENT_ID || null,
+    clientKey: DID_CLIENT_KEY || null,
+  });
+});
+
 app.post("/api/chat/stream", async (req, res) => {
   const { message } = req.body || {};
 
@@ -224,5 +233,4 @@ app.get("*", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Lisa site available at http://localhost:${PORT}`);
 });
-
 
