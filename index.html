@@ -998,6 +998,8 @@
       if (!audioUnlocked && event.isTrusted) {
         playPromise = null; // allow a fresh play attempt
         ensureVideoWithSound();
+        // Try to greet now that audio is unlocked
+        greetUser();
       }
     }
     ['click'].forEach(evt => {
@@ -1018,6 +1020,8 @@
 
     function greetUser() {
       if (hasGreeted || !agentManager || !isConnected || !streamReady) return;
+      // Wait for audio to be unlocked before greeting so user can hear it
+      if (!audioUnlocked) return;
       hasGreeted = true;
       clearTimeout(greetTimeout);
       greetTimeout = setTimeout(async () => {
