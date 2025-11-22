@@ -673,6 +673,7 @@
     let isSpeaking = false;
     let isAgentSpeaking = false; // Tracks D-ID's actual speaking state
     let micResumeTimeout = null;
+    let micSuppressedForAgent = false;
 
     const agentId = "v2_agt_DGJPr6Ua";
     const clientKey = "Z29vZ2xlLW9hdXRoMnwxMTY2NzQwOTgzMTY0MjIxMDQ5NDg6MUN6M0hJQm5XU1J5eXFvTzNkdXUx";
@@ -797,7 +798,7 @@
       recognition.onend = () => {
         isRecording = false;
         setMicUiRecording(false);
-        if (autoListenEnabled && !isSpeaking && !micAccessDenied) {
+        if (autoListenEnabled && !isSpeaking && !micAccessDenied && !micSuppressedForAgent) {
           startRecording();
         }
       };
@@ -839,12 +840,16 @@
       }
     }
 
-    function stopRecording() {
+    function stopRecording(reason = 'user') {
       if (!recognition) return;
       isRecording = false;
       continuousListening = false;
       setMicUiRecording(false);
-      setMicStatus('Mic idle. Tap to talk.', 'warn');
+      if (reason === 'agent-speaking') {
+        setMicStatus('Lisa is speaking. Mic paused.', 'warn');
+      } else {
+        setMicStatus('Mic idle. Tap to talk.', 'warn');
+      }
       try {
         recognition.stop();
       } catch (e) {
@@ -1052,7 +1057,7 @@
       if (!recognition) return;
       isSpeaking = true;
       streamVideo.classList.add('speaking');
-      stopRecording();
+      stopRecording('agent-speaking');
       clearTimeout(micResumeTimeout);
       const words = text.trim().split(/\s+/).filter(Boolean).length;
       const duration = Math.min(8000, Math.max(2000, words * 320));
@@ -1254,11 +1259,18 @@
         onVideoStateChange(state) {
           if (state === 'START') {
             isAgentSpeaking = true;
+            micSuppressedForAgent = true;
+            stopRecording('agent-speaking');
             setStatus('Streaming', true);
+            setMicStatus('Lisa is speaking. Mic paused to avoid echo.', 'warn');
           } else if (state === 'END') {
             isAgentSpeaking = false;
+            micSuppressedForAgent = false;
             if (isConnected) {
               setStatus('Connected', true);
+            }
+            if (autoListenEnabled && !micAccessDenied && !isRecording) {
+              startRecording();
             }
           }
         },
