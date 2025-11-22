@@ -645,6 +645,7 @@
     const chatScrim = document.getElementById('chat-scrim');
     let hasGreeted = false;
     let audioUnlocked = false;
+    let wantsAudioUnlock = false;
     let streamReady = false;
     let playPromise = null;
     let greetTimeout = null;
@@ -963,9 +964,10 @@
       });
     }
 
-    async function ensureVideoWithSound() {
+    async function ensureVideoWithSound(reason = 'manual') {
       // If already unlocked, nothing to do
-      if (audioUnlocked) return;
+      if (audioUnlocked) return true;
+      wantsAudioUnlock = true;
 
       try {
         streamVideo.muted = false;
@@ -974,11 +976,14 @@
           await streamVideo.play();
         }
         audioUnlocked = true;
+        wantsAudioUnlock = false;
         removeAudioPrimer();
+        return true;
       } catch (err) {
         // AbortError or NotAllowedError are expected if no user gesture yet
-        console.warn('Autoplay with sound blocked, will retry on user gesture.', err);
+        console.warn(`Autoplay with sound blocked (${reason}), will retry on user gesture.`, err);
         streamVideo.muted = true;
+        return false;
       }
     }
 
@@ -986,10 +991,12 @@
     function audioPrimer(event) {
       // Only respond to trusted user events (real clicks, not programmatic)
       if (!audioUnlocked && event.isTrusted) {
+        wantsAudioUnlock = true;
         playPromise = null; // allow a fresh play attempt
-        ensureVideoWithSound();
-        // Try to greet now that audio is unlocked
-        greetUser();
+        ensureVideoWithSound('user-gesture').then(() => {
+          // Try to greet now that audio is unlocked
+          greetUser();
+        });
       }
     }
     ['click'].forEach(evt => {
@@ -1056,11 +1063,17 @@
           playPromise.then(() => {
             streamReady = true;
             hideOverlay();
+            if (wantsAudioUnlock && !audioUnlocked) {
+              ensureVideoWithSound('stream-ready');
+            }
           }).catch((err) => {
             console.warn('Initial muted play failed (likely autoplay policy):', err);
             playPromise = null;
             streamReady = true;
             hideOverlay();
+            if (wantsAudioUnlock && !audioUnlocked) {
+              ensureVideoWithSound('stream-ready');
+            }
           });
         },
         onConnectionStateChange(state) {
@@ -1170,21 +1183,25 @@
 
     connectBtn.addEventListener('click', connectAgent);
     startAvatarBtn?.addEventListener('click', async () => {
+      wantsAudioUnlock = true;
+      ensureVideoWithSound('start-button');
       showOverlay('Connecting Lisa...');
       await connectAgent();
-      // Give stream time to initialize, then unmute
-      setTimeout(() => {
-        ensureVideoWithSound();
-        if (autoListenEnabled && !isRecording && recognition) {
-          startRecording();
-        }
-      }, 500);
+      if (autoListenEnabled && !isRecording && recognition) {
+        startRecording();
+      }
     });
 
     streamVideo.addEventListener('playing', () => {
       streamReady = true;
       hideOverlay();
-      greetUser();
+      if (wantsAudioUnlock && !audioUnlocked) {
+        ensureVideoWithSound('video-playing').then(() => {
+          greetUser();
+        });
+      } else {
+        greetUser();
+      }
     });
 
     // Preload SDK and auto-connect to greet user
