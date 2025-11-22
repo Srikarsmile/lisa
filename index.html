@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lisa</title>
+  <title>Lisa Buddy</title>
 
   <!-- Canonical -->
   <link rel="canonical" href="https://lisabuddy.ai/" />
@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#111">
 
   <!-- Open Graph / Social Preview -->
-      <meta property="og:title" content="Lisa">
+      <meta property="og:title" content="Lisa Buddy">
   <meta property="og:description" content="Chat with Lisa Buddy — a friendly AI assistant that helps your clients 24/7.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://lisabuddy.ai/">
@@ -28,7 +28,7 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:title" content="Lisa">
+      <meta name="twitter:title" content="Lisa Buddy">
   <meta name="twitter:description" content="Chat with Lisa Buddy — a friendly AI assistant that helps your clients 24/7.">
   <meta name="twitter:image" content="https://lisabuddy.ai/favicon-32x32.png">
 
@@ -41,6 +41,7 @@
       background:#f3e6d6;
       color:#111;
       display:flex; min-height:100vh; flex-direction:column;
+      overflow-x:hidden;
     }
     body.mobile-chat-open {
       overflow:hidden;
@@ -56,9 +57,12 @@
     header {
       text-align: center;
       padding: 18px 12px;
-      background:#fff;
+      background:linear-gradient(120deg,#0f3b2e,#0b271f);
       border-bottom:1px solid rgba(0,0,0,.06);
-      font-weight:600; font-size: 18px;
+      font-weight:700; font-size: 19px;
+      color:#f0fdf4;
+      letter-spacing:.2px;
+      box-shadow:0 18px 40px rgba(0,0,0,.14);
     }
 
     /* Main wrap */
@@ -484,70 +488,71 @@
     .muted { color:#6b7280; font-size:13px; }
 
     /* Mobile tweaks */
-    @media (max-width: 640px) {
-      body {
-        background:#f7f2ea;
-      }
-      header {
-        padding:12px 10px;
-        font-size:16px;
-      }
-      .wrap {
-        margin-top:12px;
-        padding:0 8px 50px;
-      }
-      .layout {
-        flex-direction:column;
-        gap:18px;
-      }
-      .col-left, .col-right {
-        width:100%;
-      }
-      .card { border-radius:0; box-shadow:none; border:none; }
-      .video-shell { border-radius:0; min-height:70vh; }
-      .stream-stage { margin:8px; border-radius:18px; }
-      .control-bar { bottom:12px; }
-      #chat-scrim { display:none; }
-      .chat-card {
-        position:relative;
-        top:auto;
-        right:auto;
+@media (max-width: 640px) {
+  body {
+    background:#f7f2ea;
+  }
+  header {
+    padding:12px 10px;
+    font-size:16px;
+  }
+  .wrap {
+    margin-top:12px;
+    padding:0 8px 50px;
+  }
+  .layout {
+    flex-direction:column;
+    gap:18px;
+  }
+  .col-left, .col-right {
+    width:100%;
+    min-width:0;
+  }
+  .card { border-radius:0; box-shadow:none; border:none; }
+  .video-shell { border-radius:0; min-height:70vh; }
+  .stream-stage { margin:8px; border-radius:18px; }
+  .control-bar { bottom:12px; position:absolute; width:auto; left:50%; transform:translateX(-50%); }
+  #chat-scrim { display:none; }
+  .chat-card {
+    position:relative;
+    top:auto;
+    right:auto;
         left:auto;
         bottom:auto;
         width:100%;
         max-width:none;
         min-height:auto;
-        border-radius:22px;
-        margin-top:12px;
-        transform:none;
-        opacity:1;
-        pointer-events:auto;
-        box-shadow:0 12px 28px rgba(0,0,0,.2);
-        padding-bottom:env(safe-area-inset-bottom, 18px);
-      }
-      .chat-card header {
-        padding-top:14px;
-        flex-direction:row;
-        align-items:center;
+    border-radius:22px;
+    margin-top:12px;
+    transform:none;
+    opacity:1;
+    pointer-events:auto;
+    box-shadow:0 12px 28px rgba(0,0,0,.2);
+    padding-bottom:env(safe-area-inset-bottom, 18px);
+  }
+  .chat-card header {
+    padding-top:14px;
+    flex-direction:row;
+    align-items:center;
         gap:8px;
       }
       .chat-card header::before {
         display:none;
-      }
-      .chat-card .close-chat {
-        display:none;
-      }
-      .chat-messages {
-        padding:18px 18px 12px;
-        max-height:45vh;
-      }
-      .chat-input-row {
-        padding-bottom:18px;
-        position:relative;
-      }
-      #chat-toggle {
-        display:none;
-      }
+  }
+  .chat-card .close-chat {
+    display:none;
+  }
+  .chat-messages {
+    padding:18px 18px 12px;
+    max-height:45vh;
+  }
+  .chat-input-row {
+    padding-bottom:18px;
+    position:relative;
+  }
+  #chat-toggle {
+    display:none;
+  }
       .consent {
         font-size:12px;
         margin-top:10px;
@@ -562,7 +567,7 @@
 </head>
 <body>
   <!-- Header -->
-  <header>Lisa</header>
+  <header>Lisa Buddy</header>
 
   <!-- Main -->
   <main class="wrap">
@@ -579,7 +584,7 @@
           <div class="stream-stage">
             <video id="stream-video" playsinline autoplay muted></video>
             <div id="video-overlay" class="video-overlay">
-              <div class="overlay-title">Lisa is getting ready</div>
+              <div class="overlay-title">Lisa Buddy is getting ready</div>
               <div class="overlay-sub">If you don't see her yet, tap below to connect and enable video with audio.</div>
               <button class="overlay-btn" id="start-avatar-btn">Start conversation</button>
             </div>
@@ -611,7 +616,7 @@
       </section>
       <section class="card col-right chat-card" aria-label="Chat panel" id="chat-panel">
         <header>
-          <span>Chat with Lisa</span>
+          <span>Chat with Lisa Buddy</span>
           <button type="button" class="close-chat" id="chat-close">×</button>
         </header>
         <div id="mic-status" class="mic-status" role="status" aria-live="polite"></div>
@@ -681,6 +686,7 @@
     let agentManager = null;
     let sdkModule = null;
     let streamType = null;
+    let speakChain = Promise.resolve();
     let isConnecting = false;
     let isConnected = false;
     let recognition = null;
@@ -750,6 +756,10 @@
       recognition.lang = 'en-US';
 
       recognition.onresult = (event) => {
+        if (isAgentSpeaking || micSuppressedForAgent) {
+          setMicStatus('Lisa Buddy is speaking. Mic paused.', 'warn');
+          return;
+        }
         let finalTranscript = '';
         let interimTranscript = '';
 
@@ -846,7 +856,7 @@
       continuousListening = false;
       setMicUiRecording(false);
       if (reason === 'agent-speaking') {
-        setMicStatus('Lisa is speaking. Mic paused.', 'warn');
+        setMicStatus('Lisa Buddy is speaking. Mic paused.', 'warn');
       } else {
         setMicStatus('Mic idle. Tap to talk.', 'warn');
       }
@@ -1008,7 +1018,7 @@
       videoOverlay.classList.remove('hidden');
       videoOverlay.classList.toggle('error', false);
       const title = videoOverlay.querySelector('.overlay-title');
-      if (title) title.textContent = 'Lisa is getting ready';
+      if (title) title.textContent = 'Lisa Buddy is getting ready';
       resetOverlayCta();
     }
 
@@ -1017,7 +1027,7 @@
       const title = videoOverlay.querySelector('.overlay-title');
       const sub = videoOverlay.querySelector('.overlay-sub');
       if (title) title.textContent = 'Unable to connect';
-      if (sub) sub.textContent = message || 'Please tap to retry starting Lisa.';
+      if (sub) sub.textContent = message || 'Please tap to retry starting Lisa Buddy.';
       videoOverlay.classList.remove('hidden');
       videoOverlay.classList.add('error');
       resetOverlayCta();
@@ -1027,9 +1037,9 @@
       if (!videoOverlay || audioUnlocked) return;
       const title = videoOverlay.querySelector('.overlay-title');
       const sub = videoOverlay.querySelector('.overlay-sub');
-      if (title) title.textContent = 'Enable sound';
-      if (sub) sub.textContent = 'Tap to allow audio so you can hear Lisa.';
-      if (startAvatarBtn) startAvatarBtn.textContent = 'Enable sound';
+      if (title) title.textContent = 'Start speaking';
+      if (sub) sub.textContent = 'Tap to allow audio so Lisa Buddy can greet you.';
+      if (startAvatarBtn) startAvatarBtn.textContent = 'Start speaking';
       videoOverlay.classList.remove('hidden');
       videoOverlay.classList.remove('error');
     }
@@ -1105,7 +1115,7 @@
     async function unlockAudio(reason = 'manual') {
       if (audioUnlocked) return true;
       if (!hasAudioTrack) {
-        showErrorOverlay('Lisa connected but no audio track is available.');
+        showErrorOverlay('Lisa Buddy connected but no audio track is available.');
         return false;
       }
       if (!audioElement) {
@@ -1158,7 +1168,7 @@
       hasGreeted = true;
       clearTimeout(greetTimeout);
       greetTimeout = setTimeout(async () => {
-        const ok = await speakSafe('Hi, I am Lisa! How can I help you today?');
+        const ok = await speakSafe('Hi, I am Lisa Buddy! How can I help you today?');
         if (!ok) {
           hasGreeted = false;
           greetingPending = true;
@@ -1212,7 +1222,7 @@
             const audioEl = buildAudioSink(value);
             if (!hasAudioTrack) {
               setStatus('Connected (no audio)', true);
-              showErrorOverlay('Lisa connected but no audio track was received.');
+              showErrorOverlay('Lisa Buddy connected but no audio track was received.');
               return;
             }
             if (audioUnlocked) {
@@ -1243,11 +1253,11 @@
             greetUser();
           } else if (state === 'connecting') {
             setStatus('Connecting…', false);
-            showOverlay('Connecting Lisa...');
+            showOverlay('Connecting Lisa Buddy...');
           } else if (state === 'disconnected' || state === 'closed' || state === 'failed') {
             isConnected = false;
             setStatus('Offline', false);
-            showErrorOverlay('Could not reach Lisa. Tap to try again.');
+            showErrorOverlay('Could not reach Lisa Buddy. Tap to try again.');
             // Auto-reconnect after 2 seconds
             setTimeout(() => {
               if (!isConnected && !isConnecting) {
@@ -1262,10 +1272,12 @@
             micSuppressedForAgent = true;
             stopRecording('agent-speaking');
             setStatus('Streaming', true);
-            setMicStatus('Lisa is speaking. Mic paused to avoid echo.', 'warn');
+            setMicStatus('Lisa Buddy is speaking. Mic paused to avoid echo.', 'warn');
           } else if (state === 'END') {
             isAgentSpeaking = false;
             micSuppressedForAgent = false;
+            isSpeaking = false;
+            streamVideo.classList.remove('speaking');
             if (isConnected) {
               setStatus('Connected', true);
             }
@@ -1320,7 +1332,7 @@
       isConnecting = true;
       connectBtn.disabled = true;
       setStatus('Connecting…', false);
-      showOverlay('Connecting Lisa...');
+      showOverlay('Connecting Lisa Buddy...');
       try {
         const sdk = await loadSdk();
         if (!agentManager) {
@@ -1354,7 +1366,7 @@
         await unlockAudio('start-button');
         return;
       }
-      showOverlay('Connecting Lisa...');
+      showOverlay('Connecting Lisa Buddy...');
       await connectAgent();
       if (audioElement) {
         await unlockAudio('start-button');
@@ -1383,7 +1395,8 @@
     // Preload SDK and auto-connect to greet user
     loadSdk().then(() => connectAgent());
 
-    async function streamAssistantResponse(prompt, container) {
+    async function streamAssistantResponse(prompt, container, options = {}) {
+      const speakDuringStream = options.speakDuringStream;
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1391,13 +1404,36 @@
       });
 
       if (!response.ok || !response.body) {
-        throw new Error('Unable to reach Lisa');
+        throw new Error('Unable to reach Lisa Buddy');
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
       let fullText = '';
+      let spokenUpTo = 0;
+
+      const enqueueSpeak = async (text) => {
+        if (!agentManager || !isConnected) return;
+        pauseMicForSpeech(text);
+        try {
+          await agentManager.speak({ type: 'text', input: text });
+        } catch (err) {
+          console.warn('Stream speak failed:', err);
+        }
+      };
+
+      const maybeSpeak = (isFinal = false) => {
+        if (!speakDuringStream || !agentManager || !isConnected) return;
+        const pending = fullText.slice(spokenUpTo).trim();
+        if (!pending) return;
+        const enoughWords = pending.split(/\s+/).length >= 12;
+        const hasPunctuation = /[.!?]\s*$/.test(pending);
+        if (!isFinal && !enoughWords && !hasPunctuation && pending.length < 80) return;
+        const chunk = pending;
+        spokenUpTo = fullText.length;
+        speakChain = speakChain.then(() => enqueueSpeak(chunk));
+      };
 
       const processBuffer = () => {
         let boundary;
@@ -1420,11 +1456,13 @@
             fullText += payload.value || '';
             container.textContent = fullText;
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            maybeSpeak(false);
           } else if (payload.type === 'done') {
             if (!fullText && payload.value) {
               fullText = payload.value;
               container.textContent = fullText;
             }
+            maybeSpeak(true);
           } else if (payload.type === 'error') {
             throw new Error(payload.message || 'OpenAI stream error');
           }
@@ -1454,6 +1492,7 @@
           // ignore
         }
       }
+      maybeSpeak(true);
 
       return fullText;
     }
@@ -1471,12 +1510,12 @@
       const assistantBubble = addMessage('assistant', '');
 
       try {
+        await ensureAgentConnected();
         // Get response from OpenAI backend
-        const finalAnswer = await streamAssistantResponse(value, assistantBubble);
+        const finalAnswer = await streamAssistantResponse(value, assistantBubble, { speakDuringStream: true });
 
         if (finalAnswer) {
           // Send text to D-ID for avatar to speak
-          await ensureAgentConnected();
           if (agentManager && isConnected) {
             pauseMicForSpeech(finalAnswer);
             agentManager.speak({ type: 'text', input: finalAnswer }).catch(() => {});
