@@ -332,6 +332,15 @@
       color:#e5e7eb;
       border-bottom-left-radius:6px;
     }
+    .mic-status {
+      padding:0 20px 6px;
+      font-size:12px;
+      color:#9ca3af;
+      min-height:16px;
+    }
+    .mic-status.ok { color:#22c55e; }
+    .mic-status.warn { color:#d97706; }
+    .mic-status.error { color:#ef4444; }
     .chat-input-row {
       display:flex;
       gap:10px;
@@ -605,6 +614,7 @@
           <span>Chat with Lisa</span>
           <button type="button" class="close-chat" id="chat-close">×</button>
         </header>
+        <div id="mic-status" class="mic-status" role="status" aria-live="polite"></div>
         <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
         <form id="chat-form" class="chat-input-row" autocomplete="off">
           <button type="button" id="mic-btn" class="mic-btn" aria-label="Voice input">
@@ -643,6 +653,7 @@
     const chatToggleBtn = document.getElementById('chat-toggle');
     const chatCloseBtn = document.getElementById('chat-close');
     const chatScrim = document.getElementById('chat-scrim');
+    const micStatus = document.getElementById('mic-status');
     let hasGreeted = false;
     let audioUnlocked = false;
     let wantsAudioUnlock = false;
@@ -650,6 +661,10 @@
     let audioElement = null;
     let audioStream = null;
     let hasAudioTrack = false;
+    let micAccessGranted = false;
+    let micAccessDenied = false;
+    let micPermissionPromise = null;
+    let micStream = null;
     let streamReady = false;
     let playPromise = null;
     let greetTimeout = null;
@@ -672,6 +687,7 @@
 
     // Initialize Web Speech API
     let continuousListening = false;
+    setMicStatus('Mic idle. Tap the mic to talk.', 'warn');
 
     function setMicUiRecording(active) {
       if (active) {
@@ -681,6 +697,47 @@
         micBtn?.classList.remove('recording');
         controlMicBtn?.classList.remove('recording');
       }
+    }
+
+    function setMicStatus(message, tone = 'info') {
+      if (!micStatus) return;
+      micStatus.textContent = message || '';
+      micStatus.classList.remove('ok', 'warn', 'error');
+      if (tone === 'ok') micStatus.classList.add('ok');
+      if (tone === 'warn') micStatus.classList.add('warn');
+      if (tone === 'error') micStatus.classList.add('error');
+    }
+
+    async function ensureMicAccess(reason = 'user') {
+      if (micAccessGranted) return true;
+      if (micPermissionPromise) return micPermissionPromise;
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setMicStatus('Microphone not supported in this browser.', 'error');
+        return false;
+      }
+      setMicStatus('Requesting microphone access…', 'warn');
+      micPermissionPromise = navigator.mediaDevices.getUserMedia({ audio: true })
+        .then((stream) => {
+          micAccessGranted = true;
+          micAccessDenied = false;
+          micStream = stream;
+          // Immediately stop tracks; we only need permission warm-up.
+          try { stream.getTracks().forEach(t => t.stop()); } catch (_) {}
+          micStream = null;
+          setMicStatus('Mic ready. Tap the mic to talk.', 'ok');
+          return true;
+        })
+        .catch((err) => {
+          micAccessDenied = true;
+          setMicStatus('Mic blocked. Please allow microphone access.', 'error');
+          console.warn(`Microphone permission failed (${reason}):`, err);
+          alert('Microphone access is blocked. Please allow mic permissions in your browser, then try again.');
+          return false;
+        })
+        .finally(() => {
+          micPermissionPromise = null;
+        });
+      return micPermissionPromise;
     }
 
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -712,27 +769,40 @@
         if (finalTranscript.trim()) {
           chatInput.value = finalTranscript;
           chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+          setMicStatus('Heard you. Thinking…', 'ok');
         }
+      };
+
+      recognition.onstart = () => {
+        setMicStatus('Listening…', 'ok');
       };
 
       recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
-        if (event.error === 'no-speech' || event.error === 'aborted') return; // ignore benign noise
+        if (event.error === 'no-speech') {
+          setMicStatus('No speech detected. Try again closer to the mic.', 'warn');
+          return;
+        }
+        if (event.error === 'aborted') return; // ignore benign noise
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          micAccessDenied = true;
+          setMicStatus('Microphone access denied. Please allow mic permissions.', 'error');
           alert('Microphone access denied. Please enable microphone permissions in your browser settings.');
         }
+        setMicStatus('Mic error. Tap the mic to retry.', 'error');
         stopRecording();
       };
 
       recognition.onend = () => {
         isRecording = false;
         setMicUiRecording(false);
-        if (autoListenEnabled && !isSpeaking) {
-          try { recognition.start(); } catch (_) {}
+        if (autoListenEnabled && !isSpeaking && !micAccessDenied) {
+          startRecording();
         }
       };
     } else {
       // Speech recognition not available - show button but inform user when clicked
+      setMicStatus('Voice input not supported in this browser.', 'error');
       const showSpeechNotSupported = () => {
         alert('Voice input is not available. Please ensure microphone permissions are enabled, or type your message instead.');
       };
@@ -740,23 +810,31 @@
       controlMicBtn?.addEventListener('click', showSpeechNotSupported);
     }
 
-    function startRecording() {
-      if (!recognition) return;
-      // Don't start if already recording
+    async function startRecording() {
+      if (!recognition) {
+        setMicStatus('Voice input not supported in this browser.', 'error');
+        return;
+      }
       if (isRecording) return;
+      const allowed = await ensureMicAccess('start-recording');
+      if (!allowed || micAccessDenied) {
+        setMicUiRecording(false);
+        return;
+      }
       recognition.continuous = true;
       recognition.interimResults = true;
       isRecording = true;
       continuousListening = true;
       setMicUiRecording(true);
+      setMicStatus('Listening…', 'ok');
       try {
         recognition.start();
       } catch (e) {
         console.warn('Could not start speech recognition:', e);
-        // If it fails, reset the UI
         isRecording = false;
         continuousListening = false;
         setMicUiRecording(false);
+        setMicStatus('Unable to start mic. Click mic and allow permissions.', 'error');
       }
     }
 
@@ -765,6 +843,7 @@
       isRecording = false;
       continuousListening = false;
       setMicUiRecording(false);
+      setMicStatus('Mic idle. Tap to talk.', 'warn');
       try {
         recognition.stop();
       } catch (e) {
@@ -772,12 +851,12 @@
       }
     }
 
-    function toggleMic() {
+    async function toggleMic() {
       autoListenEnabled = true;
       if (isRecording) {
         stopRecording();
       } else {
-        startRecording();
+        await startRecording();
       }
     }
 
@@ -1245,6 +1324,7 @@
     connectBtn.addEventListener('click', connectAgent);
     startAvatarBtn?.addEventListener('click', async () => {
       wantsAudioUnlock = true;
+      await ensureMicAccess('start-button');
       if (isConnected && streamReady) {
         await unlockAudio('start-button');
         return;
@@ -1257,7 +1337,7 @@
         showUnmutePrompt();
       }
       if (autoListenEnabled && !isRecording && recognition) {
-        startRecording();
+        await startRecording();
       }
     });
 
