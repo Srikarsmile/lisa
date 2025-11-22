@@ -661,6 +661,7 @@
     let audioElement = null;
     let audioStream = null;
     let hasAudioTrack = false;
+    let greetingPending = false;
     let micAccessGranted = false;
     let micAccessDenied = false;
     let micPermissionPromise = null;
@@ -1118,6 +1119,7 @@
         audioUnlocked = true;
         wantsAudioUnlock = false;
         hideOverlay();
+        greetingPending = false;
         greetUser();
         return true;
       } catch (err) {
@@ -1143,13 +1145,18 @@
     }
 
     function greetUser() {
-      if (hasGreeted || !agentManager || !isConnected || !streamReady || !audioUnlocked) return;
+      if (hasGreeted || !agentManager || !isConnected || !streamReady || !audioUnlocked) {
+        // queue greeting if we have connection + stream but no audio yet
+        if (isConnected && streamReady && !audioUnlocked) greetingPending = true;
+        return;
+      }
       hasGreeted = true;
       clearTimeout(greetTimeout);
       greetTimeout = setTimeout(async () => {
         const ok = await speakSafe('Hi, I am Lisa! How can I help you today?');
         if (!ok) {
           hasGreeted = false;
+          greetingPending = true;
           greetUser();
         }
       }, 250);
@@ -1209,6 +1216,10 @@
               showUnmutePrompt();
               if (wantsAudioUnlock) {
                 unlockAudio('stream-ready');
+              } else {
+                // Attempt auto-unlock once to greet quickly; if blocked, prompt remains.
+                wantsAudioUnlock = true;
+                unlockAudio('auto-try');
               }
             }
           });
@@ -1221,6 +1232,8 @@
             streamType = agentManager?.getStreamType?.();
             if (streamReady && !audioUnlocked) {
               showUnmutePrompt();
+              wantsAudioUnlock = true;
+              unlockAudio('connected');
             }
             greetUser();
           } else if (state === 'connecting') {
