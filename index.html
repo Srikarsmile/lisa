@@ -488,71 +488,71 @@
     .muted { color:#6b7280; font-size:13px; }
 
     /* Mobile tweaks */
-@media (max-width: 640px) {
-  body {
-    background:#f7f2ea;
-  }
-  header {
-    padding:12px 10px;
-    font-size:16px;
-  }
-  .wrap {
-    margin-top:12px;
-    padding:0 8px 50px;
-  }
-  .layout {
-    flex-direction:column;
-    gap:18px;
-  }
+    @media (max-width: 640px) {
+      body {
+        background:#f7f2ea;
+      }
+      header {
+        padding:12px 10px;
+        font-size:16px;
+      }
+      .wrap {
+        margin-top:12px;
+        padding:0 8px 50px;
+      }
+      .layout {
+        flex-direction:column;
+        gap:18px;
+      }
   .col-left, .col-right {
     width:100%;
     min-width:0;
   }
-  .card { border-radius:0; box-shadow:none; border:none; }
-  .video-shell { border-radius:0; min-height:70vh; }
-  .stream-stage { margin:8px; border-radius:18px; }
-  .control-bar { bottom:12px; position:absolute; width:auto; left:50%; transform:translateX(-50%); }
-  #chat-scrim { display:none; }
-  .chat-card {
-    position:relative;
-    top:auto;
-    right:auto;
+      .card { border-radius:0; box-shadow:none; border:none; }
+      .video-shell { border-radius:0; min-height:70vh; }
+      .stream-stage { margin:8px; border-radius:18px; }
+      .control-bar { bottom:12px; }
+      #chat-scrim { display:none; }
+      .chat-card {
+        position:relative;
+        top:auto;
+        right:auto;
         left:auto;
         bottom:auto;
         width:100%;
         max-width:none;
         min-height:auto;
-    border-radius:22px;
-    margin-top:12px;
-    transform:none;
-    opacity:1;
-    pointer-events:auto;
-    box-shadow:0 12px 28px rgba(0,0,0,.2);
-    padding-bottom:env(safe-area-inset-bottom, 18px);
-  }
-  .chat-card header {
-    padding-top:14px;
-    flex-direction:row;
-    align-items:center;
+        border-radius:22px;
+        margin-top:12px;
+        transform:none;
+        opacity:1;
+        pointer-events:auto;
+        box-shadow:0 12px 28px rgba(0,0,0,.2);
+        padding-bottom:env(safe-area-inset-bottom, 18px);
+      }
+      .chat-card header {
+        padding-top:14px;
+        flex-direction:row;
+        align-items:center;
         gap:8px;
       }
       .chat-card header::before {
         display:none;
-  }
-  .chat-card .close-chat {
-    display:none;
-  }
-  .chat-messages {
-    padding:18px 18px 12px;
-    max-height:45vh;
-  }
-  .chat-input-row {
-    padding-bottom:18px;
-    position:relative;
-  }
-  #chat-toggle {
-    display:none;
-  }
+      }
+      .chat-card .close-chat {
+        display:none;
+      }
+      .chat-messages {
+        padding:18px 18px 12px;
+        max-height:45vh;
+      }
+      .chat-input-row {
+        padding-bottom:18px;
+        position:relative;
+      }
+      #chat-toggle {
+        display:none;
+      }
       .consent {
         font-size:12px;
         margin-top:10px;
@@ -678,16 +678,13 @@
     let isSpeaking = false;
     let isAgentSpeaking = false; // Tracks D-ID's actual speaking state
     let micResumeTimeout = null;
-    let micSuppressedForAgent = false;
 
-    const fallbackAgentId = "v2_agt_DGJPr6Ua";
-    const fallbackClientKey = "Z29vZ2xlLW9hdXRoMnwxMTY2NzQwOTgzMTY0MjIxMDQ5NDg6MUN6M0hJQm5XU1J5eXFvTzNkdXUx";
+    const agentId = "v2_agt_DGJPr6Ua";
+    const clientKey = "Z29vZ2xlLW9hdXRoMnwxMTY2NzQwOTgzMTY0MjIxMDQ5NDg6MUN6M0hJQm5XU1J5eXFvTzNkdXUx";
 
     let agentManager = null;
     let sdkModule = null;
     let streamType = null;
-    let agentConfig = null;
-    let speakChain = Promise.resolve();
     let isConnecting = false;
     let isConnected = false;
     let recognition = null;
@@ -749,82 +746,68 @@
       return micPermissionPromise;
     }
 
-    // Speech recognition setup
-    let micReady = false;
-    let micNotSupported = false;
-
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
 
-      const initRecognition = () => {
-        if (recognition) return;
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
 
-        recognition.onresult = (event) => {
-          if (isAgentSpeaking || micSuppressedForAgent) {
-            setMicStatus('Lisa Buddy is speaking. Mic paused.', 'warn');
-            return;
-          }
-          let finalTranscript = '';
-          let interimTranscript = '';
-
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript;
-            } else {
-              interimTranscript += transcript;
-            }
-          }
-
-          if (interimTranscript) {
-            chatInput.value = interimTranscript;
-          }
-
-          if (finalTranscript.trim()) {
-            chatInput.value = finalTranscript;
-            chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
-            setMicStatus('Heard you. Thinking…', 'ok');
-          }
-        };
-
-        recognition.onstart = () => {
-          micReady = true;
-          setMicStatus('Listening…', 'ok');
-        };
-
-        recognition.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-          if (event.error === 'no-speech') {
-            setMicStatus('No speech detected. Try again closer to the mic.', 'warn');
-            return;
-          }
-          if (event.error === 'aborted') return;
-          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            micAccessDenied = true;
-            setMicStatus('Microphone access denied. Please allow mic permissions.', 'error');
-            alert('Microphone access denied. Please enable microphone permissions in your browser settings.');
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
           } else {
-            setMicStatus('Mic error. Tap the mic to retry.', 'error');
+            interimTranscript += transcript;
           }
-          stopRecording();
-        };
+        }
 
-        recognition.onend = () => {
-          isRecording = false;
-          setMicUiRecording(false);
-          if (autoListenEnabled && !isSpeaking && !micAccessDenied && !micSuppressedForAgent) {
-            startRecording();
-          }
-        };
+        // Show interim results in input
+        if (interimTranscript) {
+          chatInput.value = interimTranscript;
+        }
+
+        // Submit when we have a final result
+        if (finalTranscript.trim()) {
+          chatInput.value = finalTranscript;
+          chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+          setMicStatus('Heard you. Thinking…', 'ok');
+        }
       };
 
-      initRecognition();
+      recognition.onstart = () => {
+        setMicStatus('Listening…', 'ok');
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'no-speech') {
+          setMicStatus('No speech detected. Try again closer to the mic.', 'warn');
+          return;
+        }
+        if (event.error === 'aborted') return; // ignore benign noise
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          micAccessDenied = true;
+          setMicStatus('Microphone access denied. Please allow mic permissions.', 'error');
+          alert('Microphone access denied. Please enable microphone permissions in your browser settings.');
+        }
+        setMicStatus('Mic error. Tap the mic to retry.', 'error');
+        stopRecording();
+      };
+
+      recognition.onend = () => {
+        isRecording = false;
+        setMicUiRecording(false);
+        if (autoListenEnabled && !isSpeaking && !micAccessDenied) {
+          startRecording();
+        }
+      };
     } else {
-      micNotSupported = true;
+      // Speech recognition not available - show button but inform user when clicked
       setMicStatus('Voice input not supported in this browser.', 'error');
       const showSpeechNotSupported = () => {
         alert('Voice input is not available. Please ensure microphone permissions are enabled, or type your message instead.');
@@ -834,7 +817,6 @@
     }
 
     async function startRecording() {
-      if (micNotSupported) return;
       if (!recognition) {
         setMicStatus('Voice input not supported in this browser.', 'error');
         return;
@@ -845,6 +827,8 @@
         setMicUiRecording(false);
         return;
       }
+      recognition.continuous = true;
+      recognition.interimResults = true;
       isRecording = true;
       continuousListening = true;
       setMicUiRecording(true);
@@ -860,17 +844,17 @@
       }
     }
 
-    function stopRecording(reason = 'user') {
+    function stopRecording() {
       if (!recognition) return;
       isRecording = false;
       continuousListening = false;
       setMicUiRecording(false);
-      if (reason === 'agent-speaking') {
-        setMicStatus('Lisa Buddy is speaking. Mic paused.', 'warn');
-      } else {
-        setMicStatus(micReady ? 'Mic idle. Tap to talk.' : 'Mic ready. Tap to talk.', 'warn');
+      setMicStatus('Mic idle. Tap to talk.', 'warn');
+      try {
+        recognition.stop();
+      } catch (e) {
+        // Already stopped
       }
-      try { recognition.stop(); } catch (_) {}
     }
 
     async function toggleMic() {
@@ -1033,7 +1017,7 @@
       const title = videoOverlay.querySelector('.overlay-title');
       const sub = videoOverlay.querySelector('.overlay-sub');
       if (title) title.textContent = 'Unable to connect';
-      if (sub) sub.textContent = message || 'Please tap to retry starting Lisa Buddy.';
+      if (sub) sub.textContent = message || 'Please tap to retry starting Lisa.';
       videoOverlay.classList.remove('hidden');
       videoOverlay.classList.add('error');
       resetOverlayCta();
@@ -1043,9 +1027,9 @@
       if (!videoOverlay || audioUnlocked) return;
       const title = videoOverlay.querySelector('.overlay-title');
       const sub = videoOverlay.querySelector('.overlay-sub');
-      if (title) title.textContent = 'Start speaking';
-      if (sub) sub.textContent = 'Tap to allow audio so Lisa Buddy can greet you.';
-      if (startAvatarBtn) startAvatarBtn.textContent = 'Start speaking';
+      if (title) title.textContent = 'Enable sound';
+      if (sub) sub.textContent = 'Tap to allow audio so you can hear Lisa.';
+      if (startAvatarBtn) startAvatarBtn.textContent = 'Enable sound';
       videoOverlay.classList.remove('hidden');
       videoOverlay.classList.remove('error');
     }
@@ -1073,7 +1057,7 @@
       if (!recognition) return;
       isSpeaking = true;
       streamVideo.classList.add('speaking');
-      stopRecording('agent-speaking');
+      stopRecording();
       clearTimeout(micResumeTimeout);
       const words = text.trim().split(/\s+/).filter(Boolean).length;
       const duration = Math.min(8000, Math.max(2000, words * 320));
@@ -1188,31 +1172,6 @@
       statusDot.classList.toggle('online', online);
     }
 
-    async function loadAgentConfig() {
-      if (agentConfig) return agentConfig;
-      try {
-        const res = await fetch('/api/config');
-        if (!res.ok) throw new Error('Failed to load agent config');
-        const cfg = await res.json();
-        agentConfig = {
-          agentId: cfg.agentId || null,
-          clientKey: cfg.clientKey || null,
-        };
-        if (agentConfig.agentId && agentConfig.clientKey) {
-          return agentConfig;
-        }
-        throw new Error('Missing agent credentials from server');
-      } catch (err) {
-        console.warn('Config error, using fallback keys if available:', err);
-        if (fallbackAgentId && fallbackClientKey) {
-          agentConfig = { agentId: fallbackAgentId, clientKey: fallbackClientKey };
-          return agentConfig;
-        }
-        showErrorOverlay('Unable to load configuration. Please try again or contact support.');
-        throw err;
-      }
-    }
-
     async function loadSdk() {
       if (!sdkModule) {
         sdkModule = await import('https://cdn.jsdelivr.net/npm/@d-id/client-sdk@1.1.11/+esm');
@@ -1288,7 +1247,7 @@
           } else if (state === 'disconnected' || state === 'closed' || state === 'failed') {
             isConnected = false;
             setStatus('Offline', false);
-            showErrorOverlay('Could not reach Lisa Buddy. Tap to try again.');
+            showErrorOverlay('Could not reach Lisa. Tap to try again.');
             // Auto-reconnect after 2 seconds
             setTimeout(() => {
               if (!isConnected && !isConnecting) {
@@ -1300,19 +1259,11 @@
         onVideoStateChange(state) {
           if (state === 'START') {
             isAgentSpeaking = true;
-        micSuppressedForAgent = true;
             setStatus('Streaming', true);
-            setMicStatus('Lisa Buddy is speaking. Mic paused to avoid echo.', 'warn');
           } else if (state === 'END') {
             isAgentSpeaking = false;
-            micSuppressedForAgent = false;
-            isSpeaking = false;
-            streamVideo.classList.remove('speaking');
             if (isConnected) {
               setStatus('Connected', true);
-            }
-            if (autoListenEnabled && !micAccessDenied && !isRecording) {
-              startRecording();
             }
           }
         },
@@ -1364,7 +1315,6 @@
       setStatus('Connecting…', false);
       showOverlay('Connecting Lisa Buddy...');
       try {
-        const { agentId, clientKey } = await loadAgentConfig();
         const sdk = await loadSdk();
         if (!agentManager) {
           agentManager = await sdk.createAgentManager(agentId, {
@@ -1426,8 +1376,7 @@
     // Preload SDK and auto-connect to greet user
     loadSdk().then(() => connectAgent());
 
-    async function streamAssistantResponse(prompt, container, options = {}) {
-      const speakDuringStream = options.speakDuringStream;
+    async function streamAssistantResponse(prompt, container) {
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1442,29 +1391,6 @@
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
       let fullText = '';
-      let spokenUpTo = 0;
-
-      const enqueueSpeak = async (text) => {
-        if (!agentManager || !isConnected) return;
-        pauseMicForSpeech(text);
-        try {
-          await agentManager.speak({ type: 'text', input: text });
-        } catch (err) {
-          console.warn('Stream speak failed:', err);
-        }
-      };
-
-      const maybeSpeak = (isFinal = false) => {
-        if (!speakDuringStream || !agentManager || !isConnected) return;
-        const pending = fullText.slice(spokenUpTo).trim();
-        if (!pending) return;
-        const enoughWords = pending.split(/\s+/).length >= 12;
-        const hasPunctuation = /[.!?]\s*$/.test(pending);
-        if (!isFinal && !enoughWords && !hasPunctuation && pending.length < 80) return;
-        const chunk = pending;
-        spokenUpTo = fullText.length;
-        speakChain = speakChain.then(() => enqueueSpeak(chunk));
-      };
 
       const processBuffer = () => {
         let boundary;
@@ -1487,13 +1413,11 @@
             fullText += payload.value || '';
             container.textContent = fullText;
             chatMessages.scrollTop = chatMessages.scrollHeight;
-            maybeSpeak(false);
           } else if (payload.type === 'done') {
             if (!fullText && payload.value) {
               fullText = payload.value;
               container.textContent = fullText;
             }
-            maybeSpeak(true);
           } else if (payload.type === 'error') {
             throw new Error(payload.message || 'OpenAI stream error');
           }
@@ -1523,7 +1447,6 @@
           // ignore
         }
       }
-      maybeSpeak(true);
 
       return fullText;
     }
@@ -1541,12 +1464,12 @@
       const assistantBubble = addMessage('assistant', '');
 
       try {
-        await ensureAgentConnected();
         // Get response from OpenAI backend
-        const finalAnswer = await streamAssistantResponse(value, assistantBubble, { speakDuringStream: true });
+        const finalAnswer = await streamAssistantResponse(value, assistantBubble);
 
         if (finalAnswer) {
           // Send text to D-ID for avatar to speak
+          await ensureAgentConnected();
           if (agentManager && isConnected) {
             pauseMicForSpeech(finalAnswer);
             agentManager.speak({ type: 'text', input: finalAnswer }).catch(() => {});
