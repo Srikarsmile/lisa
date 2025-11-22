@@ -38,9 +38,16 @@
     body {
       margin: 0;
       font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background: var(--bg);
+      background:#f3e6d6;
       color:#111;
       display:flex; min-height:100vh; flex-direction:column;
+    }
+    body.mobile-chat-open {
+      overflow:hidden;
+    }
+    html, body { overscroll-behavior-y: contain; }
+    body.chat-inline #chat-toggle {
+      display:none !important;
     }
     a { color:#2563eb; text-decoration:none; }
     a:hover { text-decoration:underline; }
@@ -58,88 +65,367 @@
     .wrap {
       max-width:1200px;
       width:100%;
-      margin:24px auto 0;
-      padding:0 16px;
+      margin:24px auto 32px;
+      padding:0 20px;
       flex:1;
     }
 
     .layout {
       display:flex;
-      flex-wrap:wrap;
-      gap:20px;
-      justify-content:center;
+      gap:28px;
+      align-items:flex-start;
+      position:relative;
     }
     .col-left {
-      flex:1 1 100%;
-      min-width:280px;
+      flex:3;
+      min-width:420px;
+    }
+    .col-right {
+      flex:2;
+      min-width:320px;
+      position:relative;
     }
 
     /* Card */
     .card {
       background:#fff;
-      border-radius:var(--radius);
+      border-radius:30px;
       border:1px solid rgba(0,0,0,.06);
-      box-shadow:0 10px 30px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06);
+      box-shadow:0 25px 60px rgba(0,0,0,.15);
       overflow:hidden;
     }
 
-    .info-card {
-      padding:18px 18px 20px;
+    /* Video shell */
+    .video-shell {
+      width:100%;
+      min-height:70vh;
+      background:#f3e6d6;
+      border-radius:36px;
+      border:1px solid rgba(0,0,0,.06);
+      box-shadow:0 20px 60px rgba(0,0,0,.15);
+      position:relative;
       display:flex;
       flex-direction:column;
-      gap:12px;
     }
-    .info-title {
-      font-size:18px;
-      font-weight:650;
-      margin-bottom:4px;
+    .video-toolbar {
+      display:none;
     }
-    .info-subtitle {
-      font-size:14px;
-      color:var(--muted);
-      margin-bottom:6px;
-    }
-    .info-list {
-      list-style:none;
-      padding:0;
-      margin:6px 0 4px;
-      font-size:14px;
-    }
-    .info-list li {
-      margin-bottom:6px;
-    }
-    .chip-row {
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      margin-top:4px;
-    }
-    .chip {
-      padding:6px 10px;
+    .video-toolbar button {
+      background:#2563eb;
+      color:#fff;
+      border:none;
+      padding:8px 16px;
       border-radius:999px;
-      background:#f3f4f6;
-      font-size:13px;
-      border:1px solid rgba(0,0,0,.04);
+      font-weight:600;
+      cursor:pointer;
     }
-
-    /* Avatar container */
-    #did-container {
-      width:100%;
-      height:min(78vh,860px);
-      background:#f1eee9;
-      position:relative;
+    .video-toolbar button:disabled {
+      opacity:.5;
+      cursor:not-allowed;
+    }
+    .video-status {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:14px;
+    }
+    .status-dot {
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:#ef4444;
+      display:inline-block;
+    }
+    .status-dot.online { background:#22c55e; }
+    .stream-stage {
+      flex:1;
       display:flex;
       align-items:center;
       justify-content:center;
-      color:#555;
-      font-size:15px;
+      position:relative;
+      border-radius:32px;
+      overflow:hidden;
+      margin:18px;
+      background:#f3e6d6;
+    }
+    video#stream-video {
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      background:#f3e6d6;
+    }
+    .video-overlay {
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(145deg,rgba(15,23,42,.85),rgba(15,23,42,.65));
+      color:#e5e7eb;
       text-align:center;
-      padding:16px;
+      padding:18px;
+      gap:16px;
+      flex-direction:column;
+      backdrop-filter: blur(2px);
+    }
+    .video-overlay.hidden { display:none; }
+    .video-overlay.error { background:linear-gradient(145deg,rgba(127,29,29,.9),rgba(190,24,24,.8)); }
+    .overlay-title { font-weight:700; font-size:18px; }
+    .overlay-btn {
+      background:#2563eb;
+      color:#fff;
+      border:none;
+      padding:10px 18px;
+      border-radius:12px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 10px 25px rgba(37,99,235,.3);
+    }
+
+    /* Control bar */
+    .control-bar {
+      position:absolute;
+      bottom:28px;
+      left:50%;
+      transform:translateX(-50%);
+      background:#fff;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 16px;
+      box-shadow:0 15px 35px rgba(0,0,0,.2);
+      border:1px solid rgba(0,0,0,.05);
+      z-index:5;
+    }
+    .control-btn {
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      border:none;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      background:#111827;
+      color:#fff;
+    }
+    .control-btn.secondary {
+      background:#f3f4f6;
+      color:#111827;
+    }
+    .control-btn.recording {
+      background:#ef4444;
+      color:#fff;
+    }
+    .control-visualizer {
+      width:120px;
+      height:24px;
+      border-radius:12px;
+      background:#f4f4f5;
+      display:flex;
+      align-items:flex-end;
+      gap:4px;
+      padding:5px 8px;
+    }
+    .control-visualizer span {
+      flex:1;
+      display:block;
+      background:#111827;
+      border-radius:999px;
+      animation: eq 1.3s ease-in-out infinite;
+    }
+    .control-visualizer span:nth-child(2) { animation-delay:.2s; }
+    .control-visualizer span:nth-child(3) { animation-delay:.4s; }
+    .control-visualizer span:nth-child(4) { animation-delay:.6s; }
+
+    /* Chat card */
+    .chat-card {
+      display:flex;
+      flex-direction:column;
+      background:rgba(17,24,39,.95);
+      color:#e5e7eb;
+      border-radius:28px;
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 35px 80px rgba(0,0,0,.3);
+      min-height:min(78vh,860px);
+      position:fixed;
+      top:80px;
+      right:32px;
+      width:min(380px, 92vw);
+      max-height:calc(100vh - 120px);
+      transform:translateX(125%) scale(.95);
+      opacity:0;
+      pointer-events:none;
+      transition:transform .32s cubic-bezier(.4,.0,.2,1), opacity .22s ease;
+      z-index:30;
+      overflow:hidden;
+    }
+    .chat-card::before {
+      content:'';
+      position:absolute;
+      inset:0;
+      border-radius:inherit;
+      border:1px solid rgba(255,255,255,.05);
+      pointer-events:none;
+    }
+    .chat-card.open {
+      transform:translateX(0) scale(1);
+      opacity:1;
+      pointer-events:auto;
+    }
+    .chat-card.dragging {
+      transition:none !important;
+      cursor:grabbing;
+    }
+    .chat-card header {
+      padding:18px 22px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      font-size:18px;
+      font-weight:600;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background:linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+    }
+    .chat-card .close-chat {
+      background:rgba(255,255,255,.12);
+      border:none;
+      color:#fff;
+      font-size:20px;
+      cursor:pointer;
+      padding:2px 8px;
+      border-radius:999px;
+      transition:background .2s ease;
+    }
+    .chat-card .close-chat:hover {
+      background:rgba(255,255,255,.25);
+    }
+    .chat-messages {
+      flex:1;
+      padding:22px 22px 90px;
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+    .bubble {
+      max-width:100%;
+      padding:12px 14px;
+      border-radius:16px;
+      line-height:1.45;
+      font-size:14px;
+      box-shadow:0 8px 20px rgba(0,0,0,.25);
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.08);
+      backdrop-filter:blur(6px);
+    }
+    .bubble.user {
+      margin-left:auto;
+      background:linear-gradient(135deg,#4c6ef5,#2b50c7);
+      color:#fff;
+      border-bottom-right-radius:6px;
+      border:1px solid rgba(255,255,255,.3);
+    }
+    .bubble.assistant {
+      margin-right:auto;
+      color:#e5e7eb;
+      border-bottom-left-radius:6px;
+    }
+    .chat-input-row {
+      display:flex;
+      gap:10px;
+      padding:16px 20px 20px;
+      border-top:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.3));
+      position:sticky;
+      bottom:0;
+      z-index:5;
+    }
+    .chat-input-row input {
+      flex:1;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.2);
+      background:rgba(0,0,0,.35);
+      color:#fff;
+      padding:12px 14px;
+    }
+    .chat-input-row input::placeholder { color:rgba(255,255,255,.65); }
+    .chat-input-row input:focus {
+      outline:none;
+      border-color:#8ab4ff;
+    }
+    .chat-input-row button {
+      border:none;
+      border-radius:14px;
+      background:#8ab4ff;
+      color:#0b1020;
+      font-weight:600;
+      padding:0 18px;
+      cursor:pointer;
+      box-shadow:0 10px 25px rgba(138,180,255,.35);
+    }
+    .chat-input-row button:disabled {
+      opacity:.6;
+      cursor:not-allowed;
+    }
+    .chat-input-row .mic-btn {
+      background:rgba(255,255,255,.15);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.2);
+    }
+    .chat-input-row .mic-btn.recording {
+      background:#ef4444;
+      border-color:#ef4444;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    @keyframes eq {
+      0% { height:20%; }
+      50% { height:100%; }
+      100% { height:20%; }
+    }
+
+    /* Natural idle head movement animation - combined sway and breathe */
+    @keyframes idle-movement {
+      0% { transform: translateX(0) translateY(0) rotate(0deg) scale(1); }
+      12.5% { transform: translateX(0.5px) translateY(-0.5px) rotate(0.15deg) scale(1.0015); }
+      25% { transform: translateX(1px) translateY(-1px) rotate(0.3deg) scale(1.003); }
+      37.5% { transform: translateX(0.5px) translateY(-0.5px) rotate(0.15deg) scale(1.0015); }
+      50% { transform: translateX(0) translateY(0) rotate(0deg) scale(1); }
+      62.5% { transform: translateX(-0.5px) translateY(-0.5px) rotate(-0.15deg) scale(1.0015); }
+      75% { transform: translateX(-1px) translateY(-1px) rotate(-0.3deg) scale(1.003); }
+      87.5% { transform: translateX(-0.5px) translateY(-0.5px) rotate(-0.15deg) scale(1.0015); }
+      100% { transform: translateX(0) translateY(0) rotate(0deg) scale(1); }
+    }
+    video#stream-video {
+      animation: idle-movement 8s ease-in-out infinite;
+      transform-origin: center center;
+    }
+    video#stream-video.speaking {
+      animation-play-state: paused;
     }
 
     /* Consent strip */
     .consent { margin:14px auto 0; text-align:center; color:var(--muted); font-size:13px; }
     .consent a { font-weight:600; }
+
+    #chat-scrim {
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,.55);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .2s ease;
+      z-index:25;
+    }
+    body.mobile-chat-open #chat-scrim {
+      opacity:1;
+      pointer-events:auto;
+    }
 
     /* Footer */
     footer {
@@ -191,7 +477,7 @@
     /* Mobile tweaks */
     @media (max-width: 640px) {
       body {
-        background:#fff;
+        background:#f7f2ea;
       }
       header {
         padding:12px 10px;
@@ -199,13 +485,60 @@
       }
       .wrap {
         margin-top:12px;
-        padding:0 8px;
+        padding:0 8px 50px;
       }
       .layout {
         flex-direction:column;
+        gap:18px;
+      }
+      .col-left, .col-right {
+        width:100%;
       }
       .card { border-radius:0; box-shadow:none; border:none; }
-      #did-container { height:calc(100vh - 160px); }
+      .video-shell { border-radius:0; min-height:70vh; }
+      .stream-stage { margin:8px; border-radius:18px; }
+      .control-bar { bottom:12px; }
+      #chat-scrim { display:none; }
+      .chat-card {
+        position:relative;
+        top:auto;
+        right:auto;
+        left:auto;
+        bottom:auto;
+        width:100%;
+        max-width:none;
+        min-height:auto;
+        border-radius:22px;
+        margin-top:12px;
+        transform:none;
+        opacity:1;
+        pointer-events:auto;
+        box-shadow:0 12px 28px rgba(0,0,0,.2);
+        padding-bottom:env(safe-area-inset-bottom, 18px);
+      }
+      .chat-card header {
+        padding-top:14px;
+        flex-direction:row;
+        align-items:center;
+        gap:8px;
+      }
+      .chat-card header::before {
+        display:none;
+      }
+      .chat-card .close-chat {
+        display:none;
+      }
+      .chat-messages {
+        padding:18px 18px 12px;
+        max-height:45vh;
+      }
+      .chat-input-row {
+        padding-bottom:18px;
+        position:relative;
+      }
+      #chat-toggle {
+        display:none;
+      }
       .consent {
         font-size:12px;
         margin-top:10px;
@@ -215,9 +548,6 @@
         padding:8px 12px;
         font-size:12px;
       }
-      .modal-card { width:95vw; max-height:90vh; border-radius:12px; }
-      .modal-head { padding:12px 14px; }
-      .modal-body { padding:12px 14px; font-size:14px; }
     }
   </style>
 </head>
@@ -229,158 +559,751 @@
   <main class="wrap">
     <div class="layout">
       <section class="card col-left" aria-label="AI conversation area">
-        <div id="did-container">
-          <div class="loader" id="loader">Loading assistant…</div>
+        <div class="video-shell">
+          <div class="video-toolbar">
+            <button id="connect-btn">Connect</button>
+            <div class="video-status">
+              <span class="status-dot" id="status-dot"></span>
+              <span id="connection-label">Offline</span>
+            </div>
+          </div>
+          <div class="stream-stage">
+            <video id="stream-video" playsinline autoplay muted></video>
+            <div id="video-overlay" class="video-overlay">
+              <div class="overlay-title">Lisa is getting ready</div>
+              <div class="overlay-sub">If you don't see her yet, tap below to connect and enable video with audio.</div>
+              <button class="overlay-btn" id="start-avatar-btn">Start conversation</button>
+            </div>
+            <div class="control-bar">
+              <button id="control-mic" class="control-btn" aria-label="Toggle microphone">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </button>
+              <button class="control-btn secondary" aria-label="Voice settings">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="control-visualizer" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <button id="chat-toggle" class="control-btn secondary" aria-label="Toggle chat">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </section>
+      <section class="card col-right chat-card" aria-label="Chat panel" id="chat-panel">
+        <header>
+          <span>Chat with Lisa</span>
+          <button type="button" class="close-chat" id="chat-close">×</button>
+        </header>
+        <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+        <form id="chat-form" class="chat-input-row" autocomplete="off">
+          <button type="button" id="mic-btn" class="mic-btn" aria-label="Voice input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+          </button>
+          <input id="chat-input" type="text" placeholder="Ask me anything…" aria-label="Type your message" required />
+          <button id="chat-send" type="submit">Send</button>
+        </form>
+      </section>
     </div>
-
-    <p class="consent">
-      <a href="#" data-modal="privacy">Privacy Policy</a> •
-      <a href="#" data-modal="terms">Terms of Service</a>
-    </p>
+    <div id="chat-scrim" aria-hidden="true"></div>
   </main>
 
-  <!-- D-ID Agent -->
-  <script type="module"
-      src="https://agent.d-id.com/v2/index.js"
-      data-mode="full"
-      data-client-key="Z29vZ2xlLW9hdXRoMnwxMTY2NzQwOTgzMTY0MjIxMDQ5NDg6MUN6M0hJQm5XU1J5eXFvTzNkdXUx"
-      data-agent-id="v2_agt_DGJPr6Ua"
-      data-name="did-agent"
-      data-monitor="true"
-      data-target-id="did-container">
-  </script>
-
-  <!-- Footer -->
   <footer>&copy; <span id="year"></span> Lisa Buddy. All rights reserved.</footer>
 
-  <!-- Privacy Modal -->
-  <div class="modal" id="modal-privacy" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
-    <div class="modal-card">
-      <div class="modal-head">
-        <div class="modal-title" id="privacy-title">Privacy Policy</div>
-        <button class="close-btn" data-close>Close</button>
-      </div>
-      <div class="modal-body">
-        <p class="muted">Last updated: <span id="pp-date"></span></p>
-
-        <h3>1. Overview</h3>
-        <p>Lisa Buddy (“we”, “us”) provides a conversational AI assistant. This policy explains what we collect, how we use it, and your choices.</p>
-
-        <h3>2. Audio &amp; Voice</h3>
-        <p>With your permission, we access your device microphone to process your speech in real time and generate responses. Audio is used only during the active session and is not retained for advertising. Transcripts or logs may be stored to improve service quality and diagnostics.</p>
-
-        <h3>3. Technical Data</h3>
-        <p>We may collect device/browser information, approximate location from IP, timestamps, and error logs to secure and improve the service.</p>
-
-        <h3>4. Cookies &amp; Analytics</h3>
-        <p>Essential cookies may be used for session continuity. Optional analytics (if enabled) help us understand usage; you can opt out via your browser settings or any in-product controls we provide.</p>
-
-        <h3>5. Sharing</h3>
-        <p>Trusted service providers (e.g., hosting, speech services) may process data on our behalf under contractual confidentiality and security obligations. We do not sell personal data.</p>
-
-        <h3>6. Your Choices</h3>
-        <p>You can deny mic access, clear cookies, or contact us to request access, correction, or deletion of your information (subject to legal limits).</p>
-
-        <h3>7. Security</h3>
-        <p>We apply administrative, technical, and physical safeguards appropriate to the data we handle. No method is 100% secure.</p>
-
-        <h3>8. Contact</h3>
-        <p>Email: support@lisabuddy.ai</p>
-
-        <p class="muted">This template is provided for convenience and is not legal advice. Adapt to your jurisdiction and actual data flows.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Terms Modal -->
-  <div class="modal" id="modal-terms" role="dialog" aria-modal="true" aria-labelledby="terms-title">
-    <div class="modal-card">
-      <div class="modal-head">
-        <div class="modal-title" id="terms-title">Terms of Service</div>
-        <button class="close-btn" data-close>Close</button>
-      </div>
-      <div class="modal-body">
-        <p class="muted">Last updated: <span id="tos-date"></span></p>
-
-        <h3>1. Agreement</h3>
-        <p>By using Lisa Buddy, you agree to these Terms and our Privacy Policy.</p>
-
-        <h3>2. Service</h3>
-        <p>The assistant provides informational guidance only and is not a substitute for professional advice. We may change or suspend features without notice.</p>
-
-        <h3>3. Acceptable Use</h3>
-        <p>Do not misuse the service (e.g., unlawful content, infringement, harassment, attempts to bypass security, or reverse engineering).</p>
-
-        <h3>4. Accounts &amp; Eligibility</h3>
-        <p>You must have legal capacity to use the service. If accounts are provided, you are responsible for maintaining access security.</p>
-
-        <h3>5. Intellectual Property</h3>
-        <p>All site content and technology are owned by us or our licensors. You receive a limited, revocable right to use the service.</p>
-
-        <h3>6. Disclaimers &amp; Liability</h3>
-        <p>The service is provided “as is” without warranties. To the fullest extent allowed by law, our liability is limited to the amount you paid (if any) for the service in the last 12 months.</p>
-
-        <h3>7. Termination</h3>
-        <p>We may suspend or terminate access for violations or risk. You may stop using the service at any time.</p>
-
-        <h3>8. Governing Law</h3>
-        <p>These Terms are governed by the laws of your operating jurisdiction (update this for your business).</p>
-
-        <h3>9. Contact</h3>
-        <p>Email: legal@lisabuddy.ai</p>
-
-        <p class="muted">This template is provided for convenience and is not legal advice. Customize for your business and region.</p>
-      </div>
-    </div>
-  </div>
-
   <script>
-    // Year + dates
     document.getElementById('year').textContent = new Date().getFullYear();
-    const today = new Date().toISOString().slice(0,10);
-    document.getElementById('pp-date').textContent = today;
-    document.getElementById('tos-date').textContent = today;
+    const chatMessages = document.getElementById('chat-messages');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatSend = document.getElementById('chat-send');
+    const micBtn = document.getElementById('mic-btn');
+    const connectBtn = document.getElementById('connect-btn');
+    const connectionLabel = document.getElementById('connection-label');
+    const statusDot = document.getElementById('status-dot');
+    const streamVideo = document.getElementById('stream-video');
+    const videoOverlay = document.getElementById('video-overlay');
+    const startAvatarBtn = document.getElementById('start-avatar-btn');
+    const controlMicBtn = document.getElementById('control-mic');
+    const chatPanel = document.getElementById('chat-panel');
+    const chatToggleBtn = document.getElementById('chat-toggle');
+    const chatCloseBtn = document.getElementById('chat-close');
+    const chatScrim = document.getElementById('chat-scrim');
+    let hasGreeted = false;
+    let audioUnlocked = false;
+    let streamReady = false;
+    let playPromise = null;
+    let greetTimeout = null;
+    let autoListenEnabled = true;
+    let isSpeaking = false;
+    let isAgentSpeaking = false; // Tracks D-ID's actual speaking state
+    let micResumeTimeout = null;
 
-    // Modal logic (open/close, ESC, overlay click)
-    const openModal = id => document.getElementById(id).setAttribute('open','');
-    const closeModal = el => el.removeAttribute('open');
+    const agentId = "v2_agt_DGJPr6Ua";
+    const clientKey = "Z29vZ2xlLW9hdXRoMnwxMTY2NzQwOTgzMTY0MjIxMDQ5NDg6MUN6M0hJQm5XU1J5eXFvTzNkdXUx";
 
-    document.querySelectorAll('[data-modal]').forEach(link => {
-      link.addEventListener('click', e => {
-        e.preventDefault();
-        const target = e.currentTarget.getAttribute('data-modal');
-        openModal('modal-' + target);
-      });
-    });
+    let agentManager = null;
+    let sdkModule = null;
+    let streamType = null;
+    let isConnecting = false;
+    let isConnected = false;
+    let recognition = null;
+    let isRecording = false;
+    let currentAssistantBubble = null;
 
-    document.querySelectorAll('.modal [data-close]').forEach(btn => {
-      btn.addEventListener('click', e => closeModal(e.target.closest('.modal')));
-    });
+    // Initialize Web Speech API
+    let continuousListening = false;
 
-    document.querySelectorAll('.modal').forEach(m => {
-      m.addEventListener('click', e => {
-        if (e.target === m) closeModal(m);
-      });
-    });
+    function setMicUiRecording(active) {
+      if (active) {
+        micBtn?.classList.add('recording');
+        controlMicBtn?.classList.add('recording');
+      } else {
+        micBtn?.classList.remove('recording');
+        controlMicBtn?.classList.remove('recording');
+      }
+    }
 
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        document.querySelectorAll('.modal[open]').forEach(m => closeModal(m));
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        // Show interim results in input
+        if (interimTranscript) {
+          chatInput.value = interimTranscript;
+        }
+
+        // Submit when we have a final result
+        if (finalTranscript.trim()) {
+          chatInput.value = finalTranscript;
+          chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'no-speech' || event.error === 'aborted') return; // ignore benign noise
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          alert('Microphone access denied. Please enable microphone permissions in your browser settings.');
+        }
+        stopRecording();
+      };
+
+      recognition.onend = () => {
+        isRecording = false;
+        setMicUiRecording(false);
+        if (autoListenEnabled && !isSpeaking) {
+          try { recognition.start(); } catch (_) {}
+        }
+      };
+    } else {
+      // Speech recognition not available - show button but inform user when clicked
+      const showSpeechNotSupported = () => {
+        alert('Voice input is not available. Please ensure microphone permissions are enabled, or type your message instead.');
+      };
+      micBtn?.addEventListener('click', showSpeechNotSupported);
+      controlMicBtn?.addEventListener('click', showSpeechNotSupported);
+    }
+
+    function startRecording() {
+      if (!recognition) return;
+      // Don't start if already recording
+      if (isRecording) return;
+      // Stop agent from speaking when user starts talking (only if D-ID is actually speaking)
+      if (isAgentSpeaking && agentManager && isConnected) {
+        try {
+          if (typeof agentManager.interrupt === 'function') {
+            agentManager.interrupt();
+          }
+        } catch (e) {
+          // Ignore interrupt errors - not critical
+        }
+      }
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      isRecording = true;
+      continuousListening = true;
+      setMicUiRecording(true);
+      try {
+        recognition.start();
+      } catch (e) {
+        console.warn('Could not start speech recognition:', e);
+        // If it fails, reset the UI
+        isRecording = false;
+        continuousListening = false;
+        setMicUiRecording(false);
+      }
+    }
+
+    function stopRecording() {
+      if (!recognition) return;
+      isRecording = false;
+      continuousListening = false;
+      setMicUiRecording(false);
+      try {
+        recognition.stop();
+      } catch (e) {
+        // Already stopped
+      }
+    }
+
+    function toggleMic() {
+      autoListenEnabled = true;
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    }
+
+    micBtn.addEventListener('click', toggleMic);
+    controlMicBtn?.addEventListener('click', toggleMic);
+
+    const mobileMediaQuery = window.matchMedia('(max-width: 640px)');
+    function isMobileViewport() {
+      return mobileMediaQuery.matches;
+    }
+    function isInlineChat() {
+      return document.body.classList.contains('chat-inline');
+    }
+
+    function applyChatLayout(e) {
+      if (e.matches) {
+        document.body.classList.add('chat-inline');
+        document.body.classList.remove('mobile-chat-open');
+        chatPanel?.classList.add('open');
+        resetChatPosition();
+      } else {
+        document.body.classList.remove('chat-inline');
+        document.body.classList.remove('mobile-chat-open');
+        chatPanel?.classList.remove('open');
+        resetChatPosition();
+      }
+    }
+    applyChatLayout(mobileMediaQuery);
+    if (mobileMediaQuery.addEventListener) {
+      mobileMediaQuery.addEventListener('change', applyChatLayout);
+    } else {
+      mobileMediaQuery.addListener(applyChatLayout);
+    }
+
+    function openChatPanel() {
+      if (isInlineChat()) return;
+      chatPanel?.classList.add('open');
+      if (isMobileViewport()) {
+        document.body.classList.add('mobile-chat-open');
+      }
+      setTimeout(() => {
+        chatPanel?.scrollTo({ top: chatPanel.scrollHeight, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 150);
+    }
+    function closeChatPanel() {
+      if (isInlineChat()) return;
+      chatPanel?.classList.remove('open');
+      if (isMobileViewport()) {
+        document.body.classList.remove('mobile-chat-open');
+        chatInput.blur();
+      }
+      resetChatPosition();
+    }
+    chatToggleBtn?.addEventListener('click', () => {
+      if (chatPanel?.classList.contains('open')) {
+        closeChatPanel();
+      } else {
+        openChatPanel();
+        chatInput.blur();
       }
     });
+    chatCloseBtn?.addEventListener('click', closeChatPanel);
+    chatScrim?.addEventListener('click', closeChatPanel);
+    function resetChatPosition() {
+      if (!chatPanel) return;
+      chatPanel.classList.remove('dragging');
+      chatPanel.style.left = '';
+      chatPanel.style.top = '';
+      chatPanel.style.right = '';
+      chatPanel.style.bottom = '';
+    }
 
-    // Simple chat client that talks to our backend (/api/chat)
-    // Remove loader when DID iframe appears
-    const observer = new MutationObserver(() => {
-      const iframe = document.querySelector('#did-container iframe');
-      if (iframe) {
-        document.getElementById('loader')?.remove();
-        observer.disconnect();
+    let isDraggingPanel = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    const chatHeader = chatPanel?.querySelector('header');
+    chatHeader?.addEventListener('click', (event) => {
+      if (!isMobileViewport() || isInlineChat()) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest('.close-chat')) return;
+      if (!chatPanel?.classList.contains('open')) {
+        openChatPanel();
       }
     });
-    observer.observe(document.getElementById('did-container'), { childList: true, subtree: true });
+    chatHeader?.addEventListener('pointerdown', (event) => {
+      if (isMobileViewport() || isInlineChat() || !chatPanel?.classList.contains('open')) return;
+      if (event.button !== undefined && event.button !== 0) return;
+      isDraggingPanel = true;
+      chatPanel.classList.add('dragging');
+      const rect = chatPanel.getBoundingClientRect();
+      dragOffsetX = event.clientX - rect.left;
+      dragOffsetY = event.clientY - rect.top;
+      chatPanel.style.left = `${rect.left}px`;
+      chatPanel.style.top = `${rect.top}px`;
+      chatPanel.style.right = 'auto';
+      chatPanel.style.bottom = 'auto';
+      window.addEventListener('pointermove', onChatDrag);
+      window.addEventListener('pointerup', stopChatDrag, { once: true });
+    });
+
+    function onChatDrag(event) {
+      if (!isDraggingPanel || isMobileViewport() || isInlineChat()) return;
+      const panelWidth = chatPanel.offsetWidth;
+      const panelHeight = chatPanel.offsetHeight;
+      const minLeft = 16;
+      const minTop = 16;
+      const maxLeft = window.innerWidth - panelWidth - 16;
+      const maxTop = window.innerHeight - panelHeight - 16;
+      let nextLeft = event.clientX - dragOffsetX;
+      let nextTop = event.clientY - dragOffsetY;
+      nextLeft = Math.min(Math.max(minLeft, nextLeft), Math.max(minLeft, maxLeft));
+      nextTop = Math.min(Math.max(minTop, nextTop), Math.max(minTop, maxTop));
+      chatPanel.style.left = `${nextLeft}px`;
+      chatPanel.style.top = `${nextTop}px`;
+    }
+
+    function stopChatDrag() {
+      isDraggingPanel = false;
+      chatPanel?.classList.remove('dragging');
+      window.removeEventListener('pointermove', onChatDrag);
+    }
+
+    function addMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = `bubble ${role}`;
+      div.textContent = text;
+      chatMessages.appendChild(div);
+      chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+      return div;
+    }
+
+    function hideOverlay() {
+      videoOverlay?.classList.add('hidden');
+    }
+
+    function showOverlay(message) {
+      if (!videoOverlay) return;
+      const sub = videoOverlay.querySelector('.overlay-sub');
+      if (message && sub) sub.textContent = message;
+      videoOverlay.classList.remove('hidden');
+      videoOverlay.classList.toggle('error', false);
+      const title = videoOverlay.querySelector('.overlay-title');
+      if (title) title.textContent = 'Lisa is getting ready';
+    }
+
+    function showErrorOverlay(message) {
+      if (!videoOverlay) return;
+      const title = videoOverlay.querySelector('.overlay-title');
+      const sub = videoOverlay.querySelector('.overlay-sub');
+      if (title) title.textContent = 'Unable to connect';
+      if (sub) sub.textContent = message || 'Please tap to retry starting Lisa.';
+      videoOverlay.classList.remove('hidden');
+      videoOverlay.classList.add('error');
+    }
+
+    function cleanupPrevStream(newStream) {
+      const prev = streamVideo.srcObject;
+      const isSameStream = prev && prev === newStream;
+      if (prev && prev !== newStream && typeof prev.getTracks === 'function') {
+        try { prev.getTracks().forEach(t => t.stop()); } catch (e) { /* noop */ }
+      }
+      if (!isSameStream && prev) {
+        try { streamVideo.pause(); } catch (e) { /* noop */ }
+      }
+      playPromise = null;
+    }
+
+    function pauseMicForSpeech(text = '') {
+      if (!recognition) return;
+      isSpeaking = true;
+      streamVideo.classList.add('speaking');
+      stopRecording();
+      clearTimeout(micResumeTimeout);
+      const words = text.trim().split(/\s+/).filter(Boolean).length;
+      const duration = Math.min(8000, Math.max(2000, words * 320));
+      micResumeTimeout = setTimeout(() => {
+        isSpeaking = false;
+        streamVideo.classList.remove('speaking');
+        if (autoListenEnabled) startRecording();
+      }, duration);
+    }
+
+    function removeAudioPrimer() {
+      ['click'].forEach(evt => {
+        window.removeEventListener(evt, audioPrimer);
+      });
+    }
+
+    async function ensureVideoWithSound() {
+      // If already unlocked, nothing to do
+      if (audioUnlocked) return;
+
+      try {
+        streamVideo.muted = false;
+        streamVideo.volume = 1;
+        if (streamVideo.paused) {
+          await streamVideo.play();
+        }
+        audioUnlocked = true;
+        removeAudioPrimer();
+      } catch (err) {
+        // AbortError or NotAllowedError are expected if no user gesture yet
+        console.warn('Autoplay with sound blocked, will retry on user gesture.', err);
+        streamVideo.muted = true;
+      }
+    }
+
+    // Fallback: if browser blocks autoplay with sound, unlock it on first user action
+    function audioPrimer(event) {
+      // Only respond to trusted user events (real clicks, not programmatic)
+      if (!audioUnlocked && event.isTrusted) {
+        playPromise = null; // allow a fresh play attempt
+        ensureVideoWithSound();
+      }
+    }
+    ['click'].forEach(evt => {
+      window.addEventListener(evt, audioPrimer, { passive: true });
+    });
+
+    async function speakSafe(text) {
+      if (!agentManager || !isConnected) return false;
+      pauseMicForSpeech(text);
+      try {
+        await agentManager.speak({ type: 'text', input: text });
+        return true;
+      } catch (err) {
+        console.warn('Speak failed, will retry if needed:', err);
+        return false;
+      }
+    }
+
+    function greetUser() {
+      if (hasGreeted || !agentManager || !isConnected || !streamReady) return;
+      hasGreeted = true;
+      clearTimeout(greetTimeout);
+      greetTimeout = setTimeout(async () => {
+        const ok = await speakSafe('Hi, I am Lisa! How can I help you today?');
+        if (!ok) {
+          hasGreeted = false;
+          greetUser();
+        }
+      }, 250);
+    }
+
+    function setStatus(label, online) {
+      connectionLabel.textContent = label;
+      statusDot.classList.toggle('online', online);
+    }
+
+    async function loadSdk() {
+      if (!sdkModule) {
+        sdkModule = await import('https://cdn.jsdelivr.net/npm/@d-id/client-sdk@1.1.11/+esm');
+      }
+      return sdkModule;
+    }
+
+    function buildCallbacks(StreamType) {
+      return {
+        async onSrcObjectReady(value) {
+          console.log('[D-ID] onSrcObjectReady:', value);
+          // Wait for any pending play to finish before changing source
+          if (playPromise) {
+            try {
+              await playPromise;
+            } catch (e) {
+              // Ignore - we're replacing anyway
+            }
+            playPromise = null;
+          }
+          cleanupPrevStream(value);
+          streamVideo.srcObject = value;
+          // Start muted to satisfy autoplay policies; unmute after user interacts.
+          streamVideo.muted = true;
+          playPromise = streamVideo.play();
+          playPromise.then(() => {
+            streamReady = true;
+            hideOverlay();
+          }).catch((err) => {
+            console.warn('Initial muted play failed (likely autoplay policy):', err);
+            playPromise = null;
+            streamReady = true;
+            hideOverlay();
+          });
+        },
+        onConnectionStateChange(state) {
+          console.log('[D-ID] Connection state:', state);
+          if (state === 'connected') {
+            isConnected = true;
+            setStatus('Connected', true);
+            streamType = agentManager?.getStreamType?.();
+            greetUser();
+          } else if (state === 'connecting') {
+            setStatus('Connecting…', false);
+            showOverlay('Connecting Lisa...');
+          } else if (state === 'disconnected' || state === 'closed' || state === 'failed') {
+            isConnected = false;
+            setStatus('Offline', false);
+            showErrorOverlay('Could not reach Lisa. Tap to try again.');
+            // Auto-reconnect after 2 seconds
+            setTimeout(() => {
+              if (!isConnected && !isConnecting) {
+                connectAgent();
+              }
+            }, 2000);
+          }
+        },
+        onVideoStateChange(state) {
+          if (state === 'START') {
+            isAgentSpeaking = true;
+            setStatus('Streaming', true);
+          } else if (state === 'END') {
+            isAgentSpeaking = false;
+            if (isConnected) {
+              setStatus('Connected', true);
+            }
+          }
+        },
+        onAgentActivityStateChange(activity) {
+          if (activity === 'THINKING') {
+            setStatus('Thinking…', true);
+          } else if (activity === 'IDLE' && isConnected) {
+            setStatus('Connected', true);
+          }
+        },
+        onNewMessage(messages) {
+          // Handle streaming messages from the agent's LLM
+          console.log('[D-ID] onNewMessage:', messages);
+          for (const msg of messages) {
+            if (msg.role === 'assistant' && currentAssistantBubble) {
+              // D-ID uses 'partial' for streaming and 'answer' for complete
+              const content = msg.content || msg.text || '';
+              if (msg.type === 'partial') {
+                currentAssistantBubble.textContent = content;
+              } else if (msg.type === 'answer') {
+                currentAssistantBubble.textContent = content;
+                chatSend.disabled = false;
+                currentAssistantBubble = null;
+              }
+              chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+          }
+        },
+        onError(error) {
+          console.error('[D-ID SDK]', error);
+          setStatus('Error', false);
+          if (currentAssistantBubble) {
+            currentAssistantBubble.textContent = 'Sorry, I ran into a problem. Please try again.';
+          }
+          chatSend.disabled = false;
+        },
+      };
+    }
+
+    async function ensureAgentConnected() {
+      if (isConnected || isConnecting) return;
+      await connectAgent();
+    }
+
+    async function connectAgent() {
+      if (isConnecting || isConnected) return;
+      isConnecting = true;
+      connectBtn.disabled = true;
+      setStatus('Connecting…', false);
+      showOverlay('Connecting Lisa...');
+      try {
+        const sdk = await loadSdk();
+        if (!agentManager) {
+          agentManager = await sdk.createAgentManager(agentId, {
+            auth: { type: 'key', clientKey },
+            callbacks: buildCallbacks(sdk.StreamType),
+            streamOptions: {
+              compatibilityMode: 'auto'
+            },
+          });
+        }
+        await agentManager.connect();
+        if (!streamType) {
+          streamType = agentManager.getStreamType();
+        }
+      } catch (err) {
+        console.error(err);
+        setStatus('Failed to connect', false);
+        showErrorOverlay('Tap below to retry. If the issue persists, check your network and API keys.');
+      } finally {
+        connectBtn.disabled = false;
+        isConnecting = false;
+      }
+    }
+
+    connectBtn.addEventListener('click', connectAgent);
+    startAvatarBtn?.addEventListener('click', async () => {
+      showOverlay('Connecting Lisa...');
+      await connectAgent();
+      // Give stream time to initialize, then unmute
+      setTimeout(() => {
+        ensureVideoWithSound();
+        if (autoListenEnabled && !isRecording && recognition) {
+          startRecording();
+        }
+      }, 500);
+    });
+
+    streamVideo.addEventListener('playing', () => {
+      streamReady = true;
+      hideOverlay();
+      greetUser();
+    });
+
+    // Preload SDK and auto-connect to greet user
+    loadSdk().then(() => connectAgent());
+
+    async function streamAssistantResponse(prompt, container) {
+      const response = await fetch('/api/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: prompt }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Unable to reach Lisa');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let fullText = '';
+
+      const processBuffer = () => {
+        let boundary;
+        while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+          const chunk = buffer.slice(0, boundary).trim();
+          buffer = buffer.slice(boundary + 2);
+          if (!chunk || !chunk.startsWith('data:')) continue;
+
+          const payloadText = chunk.slice(5).trim();
+          if (!payloadText) continue;
+
+          let payload;
+          try {
+            payload = JSON.parse(payloadText);
+          } catch {
+            continue;
+          }
+
+          if (payload.type === 'delta') {
+            fullText += payload.value || '';
+            container.textContent = fullText;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          } else if (payload.type === 'done') {
+            if (!fullText && payload.value) {
+              fullText = payload.value;
+              container.textContent = fullText;
+            }
+          } else if (payload.type === 'error') {
+            throw new Error(payload.message || 'OpenAI stream error');
+          }
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          processBuffer();
+        }
+        if (done) break;
+      }
+
+      buffer += decoder.decode();
+      processBuffer();
+      const trimmed = buffer.trim();
+      if (trimmed.startsWith('data:')) {
+        try {
+          const payload = JSON.parse(trimmed.slice(5).trim());
+          if (payload.type === 'done' && payload.value) {
+            fullText = payload.value;
+            container.textContent = fullText;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      return fullText;
+    }
+
+    chatForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const value = chatInput.value.trim();
+      if (!value) return;
+      openChatPanel();
+      addMessage('user', value);
+      chatInput.value = '';
+      // Keep desktop focus behavior passive; users choose when to focus.
+      chatSend.disabled = true;
+
+      const assistantBubble = addMessage('assistant', '');
+
+      try {
+        // Get response from OpenAI backend
+        const finalAnswer = await streamAssistantResponse(value, assistantBubble);
+
+        if (finalAnswer) {
+          // Send text to D-ID for avatar to speak
+          await ensureAgentConnected();
+          if (agentManager && isConnected) {
+            pauseMicForSpeech(finalAnswer);
+            agentManager.speak({ type: 'text', input: finalAnswer }).catch(() => {});
+          }
+        } else {
+          assistantBubble.textContent = 'Hmm, I did not catch that. Could you try again?';
+        }
+      } catch (err) {
+        console.error(err);
+        assistantBubble.textContent = 'Sorry, I ran into a problem. Please try again.';
+      } finally {
+        chatSend.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>
