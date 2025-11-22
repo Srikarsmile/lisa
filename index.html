@@ -749,68 +749,82 @@
       return micPermissionPromise;
     }
 
+    // Speech recognition setup
+    let micReady = false;
+    let micNotSupported = false;
+
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
 
-      recognition.onresult = (event) => {
-        let finalTranscript = '';
-        let interimTranscript = '';
+      const initRecognition = () => {
+        if (recognition) return;
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
+        recognition.onresult = (event) => {
+          if (isAgentSpeaking || micSuppressedForAgent) {
+            setMicStatus('Lisa Buddy is speaking. Mic paused.', 'warn');
+            return;
           }
-        }
+          let finalTranscript = '';
+          let interimTranscript = '';
 
-        // Show interim results in input
-        if (interimTranscript) {
-          chatInput.value = interimTranscript;
-        }
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript;
+            } else {
+              interimTranscript += transcript;
+            }
+          }
 
-        // Submit when we have a final result
-        if (finalTranscript.trim()) {
-          chatInput.value = finalTranscript;
-          chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
-          setMicStatus('Heard you. Thinking…', 'ok');
-        }
+          if (interimTranscript) {
+            chatInput.value = interimTranscript;
+          }
+
+          if (finalTranscript.trim()) {
+            chatInput.value = finalTranscript;
+            chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+            setMicStatus('Heard you. Thinking…', 'ok');
+          }
+        };
+
+        recognition.onstart = () => {
+          micReady = true;
+          setMicStatus('Listening…', 'ok');
+        };
+
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error:', event.error);
+          if (event.error === 'no-speech') {
+            setMicStatus('No speech detected. Try again closer to the mic.', 'warn');
+            return;
+          }
+          if (event.error === 'aborted') return;
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            micAccessDenied = true;
+            setMicStatus('Microphone access denied. Please allow mic permissions.', 'error');
+            alert('Microphone access denied. Please enable microphone permissions in your browser settings.');
+          } else {
+            setMicStatus('Mic error. Tap the mic to retry.', 'error');
+          }
+          stopRecording();
+        };
+
+        recognition.onend = () => {
+          isRecording = false;
+          setMicUiRecording(false);
+          if (autoListenEnabled && !isSpeaking && !micAccessDenied && !micSuppressedForAgent) {
+            startRecording();
+          }
+        };
       };
 
-      recognition.onstart = () => {
-        setMicStatus('Listening…', 'ok');
-      };
-
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        if (event.error === 'no-speech') {
-          setMicStatus('No speech detected. Try again closer to the mic.', 'warn');
-          return;
-        }
-        if (event.error === 'aborted') return; // ignore benign noise
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          micAccessDenied = true;
-          setMicStatus('Microphone access denied. Please allow mic permissions.', 'error');
-          alert('Microphone access denied. Please enable microphone permissions in your browser settings.');
-        }
-        setMicStatus('Mic error. Tap the mic to retry.', 'error');
-        stopRecording();
-      };
-
-      recognition.onend = () => {
-        isRecording = false;
-        setMicUiRecording(false);
-        if (autoListenEnabled && !isSpeaking && !micAccessDenied) {
-          startRecording();
-        }
-      };
+      initRecognition();
     } else {
-      // Speech recognition not available - show button but inform user when clicked
+      micNotSupported = true;
       setMicStatus('Voice input not supported in this browser.', 'error');
       const showSpeechNotSupported = () => {
         alert('Voice input is not available. Please ensure microphone permissions are enabled, or type your message instead.');
@@ -820,6 +834,7 @@
     }
 
     async function startRecording() {
+      if (micNotSupported) return;
       if (!recognition) {
         setMicStatus('Voice input not supported in this browser.', 'error');
         return;
@@ -830,8 +845,6 @@
         setMicUiRecording(false);
         return;
       }
-      recognition.continuous = true;
-      recognition.interimResults = true;
       isRecording = true;
       continuousListening = true;
       setMicUiRecording(true);
@@ -855,13 +868,9 @@
       if (reason === 'agent-speaking') {
         setMicStatus('Lisa Buddy is speaking. Mic paused.', 'warn');
       } else {
-        setMicStatus('Mic idle. Tap to talk.', 'warn');
+        setMicStatus(micReady ? 'Mic idle. Tap to talk.' : 'Mic ready. Tap to talk.', 'warn');
       }
-      try {
-        recognition.stop();
-      } catch (e) {
-        // Already stopped
-      }
+      try { recognition.stop(); } catch (_) {}
     }
 
     async function toggleMic() {
